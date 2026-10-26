@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    target: 'chrome69',
+    cssTarget: 'chrome69',
+  },
   server: {
     port: 5173,
     strictPort: true,

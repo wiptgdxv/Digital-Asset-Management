@@ -16,6 +16,7 @@ import {
   type Session,
   type User,
 } from "./api";
+import { createCompatibleAbortController } from "./browserCompat";
 
 const displayTime = (iso: string) =>
   new Date(iso).toLocaleString("zh-CN", {
@@ -91,7 +92,7 @@ function MentionTextarea({
       setLookupFailed(false);
       return;
     }
-    const controller = new AbortController();
+    const controller = createCompatibleAbortController();
     const timer = window.setTimeout(() => {
       setSearching(true);
       setLookupFailed(false);
@@ -107,7 +108,7 @@ function MentionTextarea({
           setSelected(0);
         })
         .catch((reason) => {
-          if (!controller.signal.aborted) {
+          if (!controller.signal?.aborted) {
             if (reason instanceof ApiError && reason.status === 401)
               onExpired();
             else {
@@ -117,7 +118,7 @@ function MentionTextarea({
           }
         })
         .finally(() => {
-          if (!controller.signal.aborted) setSearching(false);
+          if (!controller.signal?.aborted) setSearching(false);
         });
     }, 180);
     return () => {
@@ -268,7 +269,7 @@ export function CommentsPanel({
   );
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createCompatibleAbortController();
     setLoading(true);
     setError("");
     api<{ items: Comment[] }>("/projects/" + projectId + "/comments", {
@@ -276,10 +277,10 @@ export function CommentsPanel({
     })
       .then((result) => setComments(result.items))
       .catch((reason) => {
-        if (!controller.signal.aborted) handleError(reason, setError);
+        if (!controller.signal?.aborted) handleError(reason, setError);
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal?.aborted) setLoading(false);
       });
     return () => controller.abort();
   }, [handleError, loadRevision, projectId]);

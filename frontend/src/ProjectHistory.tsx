@@ -7,6 +7,7 @@ import {
   type ProjectHistoryItem,
   type ProjectHistoryResponse,
 } from "./api";
+import { createCompatibleAbortController } from "./browserCompat";
 
 const fieldNames: Record<string, string> = {
   created: "创建项目",
@@ -50,7 +51,7 @@ export function ProjectHistory({
   const contentId = `project-history-content-${project.id}`;
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createCompatibleAbortController();
     setLoading(true);
     setError("");
     api<ProjectHistoryResponse>(`/projects/${project.id}/history?page=1`, {
@@ -62,12 +63,12 @@ export function ProjectHistory({
         setPage(1);
       })
       .catch((reason) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal?.aborted) return;
         if (reason instanceof ApiError && reason.status === 401) onExpired();
         else setError(errorMessage(reason));
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal?.aborted) setLoading(false);
       });
     return () => controller.abort();
   }, [onExpired, project.id, project.version, revision]);

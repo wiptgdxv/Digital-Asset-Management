@@ -11,6 +11,7 @@ import {
 import { Upload } from "tus-js-client";
 import { api, errorMessage, type Session } from "./api";
 import { createTaskKey, digestUploadSample } from "./browserCrypto";
+import { readBlobAsArrayBuffer } from "./browserCompat";
 
 type Attachment = {
   id: number;
@@ -606,10 +607,12 @@ export const FilesPanel = forwardRef<
         headers: { "X-CSRF-Token": session.csrfToken },
         fingerprint: async (file) => {
           const f = file as File;
-          const bytes = await new Blob([
-            f.slice(0, 65536),
-            f.slice(Math.max(0, f.size - 65536)),
-          ]).arrayBuffer();
+          const bytes = await readBlobAsArrayBuffer(
+            new Blob([
+              f.slice(0, 65536),
+              f.slice(Math.max(0, f.size - 65536)),
+            ]),
+          );
           const digest = await digestUploadSample(bytes);
           return [
             "assets",

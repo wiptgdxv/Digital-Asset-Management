@@ -67,10 +67,10 @@ powershell -ExecutionPolicy Bypass -File scripts/start-backend.ps1
 在 Windows 开发机生成离线发布包：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/package-linux-amd64.ps1 -Version 1.0.6 -PublicOrigin http://192.168.1.100:9009
+powershell -ExecutionPolicy Bypass -File scripts/package-linux-amd64.ps1 -Version 1.0.7 -PublicOrigin http://192.168.1.100:9009
 ```
 
-把生成的 `release/digital-assets-1.0.6-linux-amd64` 整个目录传到服务器。发布包已生成可直接使用的 `.env.production` 和随机数据库密码，按照其中的 `deploy/README.md` 执行部署即可：
+把生成的 `release/digital-assets-1.0.7-linux-amd64` 整个目录传到服务器。发布包已生成可直接使用的 `.env.production` 和随机数据库密码，按照其中的 `deploy/README.md` 执行部署即可：
 
 ```bash
 bash deploy/deploy.sh

@@ -13,6 +13,7 @@ import { ProjectHistory } from "./ProjectHistory";
 import { AdminPanel } from "./AdminPanel";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { PasswordPanel } from "./PasswordPanel";
+import { createCompatibleAbortController } from "./browserCompat";
 const date = (value: string) =>
   new Date(value).toLocaleString("zh-CN", {
     timeZone: "Asia/Shanghai",
@@ -219,7 +220,7 @@ function Workspace({
   }, [onExpired]);
   useEffect(() => {
     if (view !== "list") return;
-    const c = new AbortController();
+    const c = createCompatibleAbortController();
     setLoading(true);
     setError("");
     const params = new URLSearchParams({
@@ -237,13 +238,13 @@ function Workspace({
         setTotal(r.total);
       })
       .catch((e) => {
-        if (!c.signal.aborted) {
+        if (!c.signal?.aborted) {
           if (e instanceof ApiError && e.status === 401) onExpired();
           else setError(errorMessage(e));
         }
       })
       .finally(() => {
-        if (!c.signal.aborted) setLoading(false);
+        if (!c.signal?.aborted) setLoading(false);
       });
     return () => c.abort();
   }, [scope, search, category, sort, page, revision, view]);

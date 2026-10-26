@@ -17,6 +17,7 @@ import {
 } from "./api";
 import { categories } from "./ProjectForm";
 import { FilesPanel, type FilesPanelHandle } from "./FilesPanel";
+import { createCompatibleAbortController, readUtf8File } from "./browserCompat";
 import {
   clearProjectDraft,
   draftTime,
@@ -134,7 +135,7 @@ export function ProjectEdit({
       setLookupError("");
       return;
     }
-    const controller = new AbortController();
+    const controller = createCompatibleAbortController();
     const timer = window.setTimeout(() => {
       setLookupError("");
       api<{ items: User[] }>(
@@ -151,7 +152,7 @@ export function ProjectEdit({
           ),
         )
         .catch((reason) => {
-          if (controller.signal.aborted) return;
+          if (controller.signal?.aborted) return;
           if (reason instanceof ApiError && reason.status === 401) onExpired();
           else setLookupError(errorMessage(reason));
         });
@@ -226,9 +227,7 @@ export function ProjectEdit({
       return;
     }
     try {
-      const content = new TextDecoder("utf-8", { fatal: true }).decode(
-        await file.arrayBuffer(),
-      );
+      const content = await readUtf8File(file);
       if (!content.trim() || content.includes("\0")) {
         setError("文件不是有效的 Markdown 文本，原有说明已保留。");
         return;

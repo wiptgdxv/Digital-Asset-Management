@@ -8,6 +8,7 @@ import {
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MAX_FILE_SIZE } from "./FilesPanel";
+import { createCompatibleAbortController, readUtf8File } from "./browserCompat";
 import {
   api,
   ApiError,
@@ -169,9 +170,7 @@ export function ProjectForm({
     }
     setImporting(true);
     try {
-      const content = new TextDecoder("utf-8", { fatal: true }).decode(
-        await file.arrayBuffer(),
-      );
+      const content = await readUtf8File(file);
       if (!content.trim()) {
         setImportError("文件内容为空，原有说明已保留。");
         return;
@@ -203,7 +202,7 @@ export function ProjectForm({
       setLookupError("");
       return;
     }
-    const c = new AbortController();
+    const c = createCompatibleAbortController();
     const timer = setTimeout(() => {
       setLookupError("");
       api<{ items: User[] }>(
@@ -220,7 +219,7 @@ export function ProjectForm({
           ),
         )
         .catch((e) => {
-          if (!c.signal.aborted) {
+          if (!c.signal?.aborted) {
             if (e instanceof ApiError && e.status === 401) onExpired();
             else setLookupError(errorMessage(e));
           }

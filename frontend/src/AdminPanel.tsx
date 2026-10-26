@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, errorMessage, type Session, type User } from "./api";
+import { copyText, createCompatibleAbortController } from "./browserCompat";
 
 export function AdminPanel({
   session,
@@ -23,7 +24,7 @@ export function AdminPanel({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createCompatibleAbortController();
     const timer = window.setTimeout(() => {
       setLoading(true);
       setError("");
@@ -32,12 +33,12 @@ export function AdminPanel({
       })
         .then((result) => setUsers(result.items))
         .catch((reason) => {
-          if (controller.signal.aborted) return;
+          if (controller.signal?.aborted) return;
           if (reason instanceof ApiError && reason.status === 401) onExpired();
           else setError(errorMessage(reason));
         })
         .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
+          if (!controller.signal?.aborted) setLoading(false);
         });
     }, 200);
     return () => {
@@ -104,7 +105,7 @@ export function AdminPanel({
   async function copyTemporaryPassword() {
     if (!resetResult) return;
     try {
-      await navigator.clipboard.writeText(resetResult.temporaryPassword);
+      await copyText(resetResult.temporaryPassword);
       setCopied(true);
     } catch {
       setError("无法自动复制，请手动选择临时密码复制。 ");
