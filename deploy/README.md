@@ -65,7 +65,7 @@ docker compose --env-file .env.production -f compose.production.yaml logs --tail
 docker compose --env-file .env.production -f compose.production.yaml logs --tail=200 frontend
 ```
 
-升级时使用新版本号生成并上传新的发布目录，把上一版本的 `.env.production` 复制到新目录，只修改 `IMAGE_VERSION`，然后执行新目录中的 `deploy/deploy.sh`。不要删除 Docker 卷。
+从 `1.0.4` 升级到 `1.0.5` 时，把新镜像包、`deploy.sh` 和 `upgrade.sh` 上传到原部署目录，然后执行 `sudo sh deploy/upgrade.sh`。脚本会备份并保留原 `.env.production`，自动修改镜像版本并部署。不要删除 Docker 卷。
 
 ## 5. 初始化管理员
 

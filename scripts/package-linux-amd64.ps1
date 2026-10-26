@@ -55,6 +55,7 @@ try {
     Copy-Item -LiteralPath 'compose.production.yaml' -Destination $releaseDir
     $releaseDeployDir = New-Item -ItemType Directory -Path (Join-Path $releaseDir 'deploy')
     Copy-Item -LiteralPath 'deploy/deploy.sh' -Destination $releaseDeployDir
+    Copy-Item -LiteralPath 'deploy/upgrade.sh' -Destination $releaseDeployDir
     Copy-Item -LiteralPath 'deploy/backup.sh' -Destination $releaseDeployDir
     Copy-Item -LiteralPath 'deploy/README.md' -Destination $releaseDeployDir
 
