@@ -59,6 +59,30 @@ try {
     Copy-Item -LiteralPath 'deploy/backup.sh' -Destination $releaseDeployDir
     Copy-Item -LiteralPath 'deploy/README.md' -Destination $releaseDeployDir
 
+    # Keep versioned deployment helpers consistent with the requested package
+    # version instead of leaking the repository's current default version.
+    $releaseUpgradePath = Join-Path $releaseDeployDir 'upgrade.sh'
+    $releaseUpgrade = [System.IO.File]::ReadAllText($releaseUpgradePath)
+    $releaseUpgrade = [regex]::Replace(
+        $releaseUpgrade,
+        '(?m)^TARGET_VERSION=.*$',
+        "TARGET_VERSION=$Version"
+    )
+    [System.IO.File]::WriteAllText(
+        $releaseUpgradePath,
+        $releaseUpgrade,
+        [System.Text.UTF8Encoding]::new($false)
+    )
+
+    $releaseReadmePath = Join-Path $releaseDeployDir 'README.md'
+    $releaseReadme = [System.IO.File]::ReadAllText($releaseReadmePath)
+    $releaseReadme = $releaseReadme.Replace('1.0.7', $Version)
+    [System.IO.File]::WriteAllText(
+        $releaseReadmePath,
+        $releaseReadme,
+        [System.Text.UTF8Encoding]::new($false)
+    )
+
     $passwordBytes = New-Object byte[] 32
     $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     try {

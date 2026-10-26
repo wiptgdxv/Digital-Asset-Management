@@ -10,7 +10,12 @@ export function Auth({ onLogin }: { onLogin: (session: Session) => void }) {
     setBusy(true);
     setError("");
     setMessage("");
-    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const form = new FormData(event.currentTarget);
+    const data = {
+      ...(register ? { name: String(form.get("name") ?? "") } : {}),
+      username: String(form.get("username") ?? ""),
+      password: String(form.get("password") ?? ""),
+    };
     try {
       if (register) {
         await api("/auth/register", {
