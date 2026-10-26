@@ -1,0 +1,10 @@
+Name: asset-api
+Host: 0.0.0.0
+Port: 8888
+Mode: pro
+Timeout: 5000
+DatabaseURL: "${DATABASE_URL}"
+UploadDir: "${UPLOAD_DIR}"
+CookieSecure: ${COOKIE_SECURE}
+AllowedOrigin: "${ALLOWED_ORIGIN}"
+BootstrapAdminUsername: "${BOOTSTRAP_ADMIN_USERNAME}"

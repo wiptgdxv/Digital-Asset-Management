@@ -1,0 +1,7 @@
+Name: asset-api
+Host: 127.0.0.1
+Port: 8888
+Mode: dev
+Timeout: 5000
+DatabaseURL: "${DATABASE_URL}"
+BootstrapAdminUsername: "${BOOTSTRAP_ADMIN_USERNAME}"

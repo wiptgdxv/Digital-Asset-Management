@@ -1,0 +1,308 @@
+syntax = "v1"
+
+type HealthResponse {
+	Status   string `json:"status"`
+	Database string `json:"database"`
+}
+
+type UploadIDRequest {
+	Id string `path:"id"`
+}
+
+type FileIDRequest {
+	Id int64 `path:"id"`
+}
+
+type FileItem {
+	Id           int64  `json:"id"`
+	Filename     string `json:"filename"`
+	RelativePath string `json:"relativePath"`
+	Size         int64  `json:"size"`
+	Uploader     string `json:"uploader"`
+	UpdatedAt    string `json:"updatedAt"`
+	Kind         string `json:"kind"`
+	Previewable  bool   `json:"previewable"`
+}
+
+type FilesResponse {
+	Items []FileItem `json:"items"`
+}
+
+type User {
+	Id       int64  `json:"id"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	IsAdmin  bool   `json:"isAdmin"`
+}
+
+type UpdateAdminRequest {
+	Id      int64 `path:"id"`
+	IsAdmin bool  `json:"isAdmin"`
+}
+
+type RegisterRequest {
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginRequest {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type AuthResponse {
+	User               User   `json:"user"`
+	CsrfToken          string `json:"csrfToken"`
+	MustChangePassword bool   `json:"mustChangePassword"`
+}
+
+type ChangePasswordRequest {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+type ResetPasswordRequest {
+	Id int64 `path:"id"`
+}
+
+type ResetPasswordResponse {
+	TemporaryPassword string `json:"temporaryPassword"`
+}
+
+type MessageResponse {
+	Message string `json:"message"`
+}
+
+type SearchUsersRequest {
+	Query string `form:"q,optional"`
+}
+
+type UsersResponse {
+	Items []User `json:"items"`
+}
+
+type ProjectRequest {
+	Name            string  `json:"name"`
+	Summary         string  `json:"summary"`
+	Readme          string  `json:"readme"`
+	Category        string  `json:"category"`
+	DemoEnabled     bool    `json:"demoEnabled"`
+	CollaboratorIds []int64 `json:"collaboratorIds"`
+}
+
+type Project {
+	Id            int64  `json:"id"`
+	Version       int64  `json:"version"`
+	Name          string `json:"name"`
+	Summary       string `json:"summary"`
+	Readme        string `json:"readme"`
+	Category      string `json:"category"`
+	DemoEnabled   bool   `json:"demoEnabled"`
+	Author        User   `json:"author"`
+	LastEditor    User   `json:"lastEditor"`
+	Collaborators []User `json:"collaborators"`
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
+}
+
+type UpdateProjectRequest {
+	Id              int64   `path:"id"`
+	Version         int64   `json:"version"`
+	Name            string  `json:"name"`
+	Summary         string  `json:"summary"`
+	Readme          string  `json:"readme"`
+	Category        string  `json:"category"`
+	DemoEnabled     bool    `json:"demoEnabled"`
+	CollaboratorIds []int64 `json:"collaboratorIds"`
+}
+
+type ListProjectsRequest {
+	Query    string `form:"q,optional"`
+	Scope    string `form:"scope,default=all"`
+	Category string `form:"category,optional"`
+	Sort     string `form:"sort,default=updated"`
+	Page     int64  `form:"page,default=1"`
+}
+
+type ProjectsResponse {
+	Items []Project `json:"items"`
+	Total int64     `json:"total"`
+}
+
+type ProjectIDRequest {
+	Id int64 `path:"id"`
+}
+
+type ProjectFolderRequest {
+	Id     int64  `path:"id"`
+	Folder string `form:"folder"`
+}
+
+type Comment {
+	Id        int64   `json:"id"`
+	ProjectId int64   `json:"projectId"`
+	UserId    int64   `json:"userId"`
+	User      User    `json:"user"`
+	Content   string  `json:"content"`
+	CreatedAt string  `json:"createdAt"`
+	UpdatedAt string  `json:"updatedAt"`
+	Replies   []Reply `json:"replies"`
+}
+
+type Reply {
+	Id        int64  `json:"id"`
+	CommentId int64  `json:"commentId"`
+	UserId    int64  `json:"userId"`
+	User      User   `json:"user"`
+	Content   string `json:"content"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+type CreateCommentRequest {
+	ProjectId int64  `path:"id"`
+	Content   string `json:"content"`
+}
+
+type CreateReplyRequest {
+	CommentId int64  `path:"id"`
+	Content   string `json:"content"`
+}
+
+type CommentsResponse {
+	Items []Comment `json:"items"`
+}
+
+type Notification {
+	Id          int64  `json:"id"`
+	Actor       User   `json:"actor"`
+	ProjectId   int64  `json:"projectId"`
+	ProjectName string `json:"projectName"`
+	CommentId   int64  `json:"commentId"`
+	Content     string `json:"content"`
+	IsRead      bool   `json:"isRead"`
+	CreatedAt   string `json:"createdAt"`
+}
+
+type NotificationsResponse {
+	Items  []Notification `json:"items"`
+	Unread int64          `json:"unread"`
+}
+
+type ListProjectHistoryRequest {
+	Id   int64 `path:"id"`
+	Page int64 `form:"page,default=1"`
+}
+
+type ProjectHistoryItem {
+	Id                  int64    `json:"id"`
+	Version             int64    `json:"version"`
+	Editor              User     `json:"editor"`
+	Action              string   `json:"action"`
+	ChangedFields       []string `json:"changedFields"`
+	RestoredFromVersion int64    `json:"restoredFromVersion"`
+	CreatedAt           string   `json:"createdAt"`
+}
+
+type ProjectHistoryResponse {
+	Items []ProjectHistoryItem `json:"items"`
+	Total int64                `json:"total"`
+}
+
+service asset-api {
+	@handler Health
+	get /api/v1/health returns (HealthResponse)
+
+	@handler Register
+	post /api/v1/auth/register (RegisterRequest) returns (MessageResponse)
+
+	@handler Login
+	post /api/v1/auth/login (LoginRequest) returns (AuthResponse)
+}
+
+@server (
+	middleware: Session
+)
+service asset-api {
+	@handler Me
+	get /api/v1/auth/me returns (AuthResponse)
+
+	@handler ChangePassword
+	post /api/v1/auth/change-password (ChangePasswordRequest) returns (MessageResponse)
+
+	@handler ListFiles
+	get /api/v1/projects/:id/files (ProjectIDRequest) returns (FilesResponse)
+
+	@handler ListDemoFiles
+	get /api/v1/projects/:id/demo-files (ProjectIDRequest) returns (FilesResponse)
+
+	@handler CompleteUpload
+	post /api/v1/uploads/:id/complete (UploadIDRequest) returns (FileItem)
+
+	@handler DeleteFile
+	delete /api/v1/files/:id (FileIDRequest) returns (MessageResponse)
+
+	@handler Logout
+	post /api/v1/auth/logout returns (MessageResponse)
+
+	@handler SearchUsers
+	get /api/v1/users (SearchUsersRequest) returns (UsersResponse)
+
+	@handler CreateProject
+	post /api/v1/projects (ProjectRequest) returns (Project)
+
+	@handler ListProjects
+	get /api/v1/projects (ListProjectsRequest) returns (ProjectsResponse)
+
+	@handler GetProject
+	get /api/v1/projects/:id (ProjectIDRequest) returns (Project)
+
+	@handler UpdateProject
+	put /api/v1/projects/:id (UpdateProjectRequest) returns (Project)
+
+	@handler ListComments
+	get /api/v1/projects/:id/comments (ProjectIDRequest) returns (CommentsResponse)
+
+	@handler CreateComment
+	post /api/v1/projects/:id/comments (CreateCommentRequest) returns (Comment)
+
+	@handler CreateReply
+	post /api/v1/comments/:id/replies (CreateReplyRequest) returns (Reply)
+
+	@handler ListNotifications
+	get /api/v1/notifications returns (NotificationsResponse)
+
+	@handler ReadNotifications
+	post /api/v1/notifications/read returns (MessageResponse)
+
+	@handler ListProjectHistory
+	get /api/v1/projects/:id/history (ListProjectHistoryRequest) returns (ProjectHistoryResponse)
+
+	@handler UpdateAdmin
+	put /api/v1/users/:id/admin (UpdateAdminRequest) returns (User)
+
+	@handler ResetPassword
+	post /api/v1/users/:id/reset-password (ResetPasswordRequest) returns (ResetPasswordResponse)
+
+	@handler DeleteProject
+	delete /api/v1/projects/:id (ProjectIDRequest) returns (MessageResponse)
+}
+
+@server (
+	middleware: Session
+	timeout:    0s
+)
+service asset-api {
+	@handler DownloadProjectFiles
+	get /api/v1/projects/:id/files/download-all (ProjectIDRequest)
+
+	@handler DownloadProjectFolder
+	get /api/v1/projects/:id/files/download-folder (ProjectFolderRequest)
+
+	@handler DownloadFile
+	get /api/v1/files/:id/download (FileIDRequest)
+
+	@handler PreviewFile
+	get /api/v1/files/:id/preview (FileIDRequest)
+}

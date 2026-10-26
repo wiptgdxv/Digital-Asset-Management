@@ -1,0 +1,16 @@
+.git
+.github
+.claude
+.ai-context
+.env
+.env.*
+!.env.example
+!.env.production.example
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report
+**/*.log
+uploads
+data
+release
