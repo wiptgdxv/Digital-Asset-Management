@@ -11,11 +11,13 @@ uname -m
 cat /etc/os-release
 docker version
 docker compose version
+# 如果上一条不可用，请检查独立命令形式
+docker-compose version
 df -h
 free -h
 ```
 
-`uname -m` 必须为 `x86_64`（Docker 对应平台名为 `linux/amd64`）。请为 PostgreSQL、上传文件和备份预留容量；单文件允许 5,000,000,000 字节。
+`uname -m` 必须为 `x86_64`（Docker 对应平台名为 `linux/amd64`）。部署脚本兼容 `docker compose` 和 `docker-compose` 两种 Compose v2 命令。请为 PostgreSQL、上传文件和备份预留容量；单文件允许 5,000,000,000 字节。
 
 ## 2. 准备发布包
 

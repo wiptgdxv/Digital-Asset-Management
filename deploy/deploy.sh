@@ -12,7 +12,14 @@ if [ "$(uname -m)" != "x86_64" ] && [ "$(uname -m)" != "amd64" ]; then
 fi
 
 command -v docker >/dev/null 2>&1 || { echo 'Docker is required.' >&2; exit 1; }
-docker compose version >/dev/null 2>&1 || { echo 'Docker Compose v2 is required.' >&2; exit 1; }
+if docker compose version >/dev/null 2>&1; then
+    compose() { docker compose "$@"; }
+elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+    compose() { docker-compose "$@"; }
+else
+    echo 'Docker Compose v2 is required (docker compose or docker-compose).' >&2
+    exit 1
+fi
 [ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE." >&2; exit 1; }
 
 IMAGE_VERSION=$(sed -n 's/^IMAGE_VERSION=//p' "$ENV_FILE" | tail -n 1)
@@ -27,8 +34,8 @@ for IMAGE in "digital-assets-backend:$IMAGE_VERSION" "digital-assets-frontend:$I
     [ "$PLATFORM" = 'linux/amd64' ] || { echo "$IMAGE has unexpected platform: $PLATFORM" >&2; exit 1; }
 done
 
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet
+compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
+compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
 
 echo "Deployment started. Check the HTTP endpoint and logs before announcing availability."
