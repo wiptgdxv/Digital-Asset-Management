@@ -83,16 +83,28 @@ export async function api<T>(
   options: RequestInit = {},
   csrf?: string,
 ): Promise<T> {
-  const response = await fetch("/api/v1" + path, {
-    ...options,
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(csrf ? { "X-CSRF-Token": csrf } : {}),
-      ...options.headers,
-    },
-    signal: options.signal ?? AbortSignal.timeout(15000),
-  });
+  const timeoutController =
+    !options.signal && typeof AbortController !== "undefined"
+      ? new AbortController()
+      : null;
+  const timeoutId = timeoutController
+    ? window.setTimeout(() => timeoutController.abort(), 15000)
+    : 0;
+  let response: Response;
+  try {
+    response = await fetch("/api/v1" + path, {
+      ...options,
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrf ? { "X-CSRF-Token": csrf } : {}),
+        ...options.headers,
+      },
+      signal: options.signal ?? timeoutController?.signal,
+    });
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  }
   const body = await response.json().catch(() => ({}));
   if (!response.ok)
     throw new ApiError(response.status, body.message || "请求失败，请稍后重试");

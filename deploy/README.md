@@ -24,21 +24,21 @@ free -h
 在 Windows 开发机项目根目录执行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/package-linux-amd64.ps1 -Version 1.0.4 -PublicOrigin http://192.168.1.100:9009
+powershell -ExecutionPolicy Bypass -File scripts/package-linux-amd64.ps1 -Version 1.0.5 -PublicOrigin http://192.168.1.100:9009
 ```
 
-把 `release/digital-assets-1.0.4-linux-amd64` 整个目录传到服务器，例如 `/opt/digital-assets/releases/1.0.4`。
+把 `release/digital-assets-1.0.5-linux-amd64` 整个目录传到服务器，例如 `/opt/digital-assets/releases/1.0.5`。
 
 ## 3. 配置服务器
 
 ```bash
-cd /opt/digital-assets/releases/1.0.4
+cd /opt/digital-assets/releases/1.0.5
 ```
 
 发布包内已经包含 `.env.production`，数据库密码由打包脚本提前随机生成，无需在服务器上再次设置。打包时传入的访问地址应与员工浏览器实际使用的地址一致，例如：
 
 ```env
-IMAGE_VERSION=1.0.4
+IMAGE_VERSION=1.0.5
 ALLOWED_ORIGIN=http://192.168.1.100:9009
 COOKIE_SECURE=false
 BOOTSTRAP_ADMIN_USERNAME=admin
