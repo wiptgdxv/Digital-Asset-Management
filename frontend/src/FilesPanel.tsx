@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Upload } from "tus-js-client";
 import { api, errorMessage, type Session } from "./api";
+import { createTaskKey, digestUploadSample } from "./browserCrypto";
 
 type Attachment = {
   id: number;
@@ -480,7 +481,7 @@ export const FilesPanel = forwardRef<
   const [dragging, setDragging] = useState(false);
   const [tasks, setTasks] = useState<Task[]>(() =>
     initialFiles.map((file) => ({
-      key: crypto.randomUUID(),
+      key: createTaskKey(),
       file,
       relativePath: "",
       progress: 0,
@@ -548,7 +549,7 @@ export const FilesPanel = forwardRef<
     setTasks((ts) => [
       ...ts,
       ...selected.map(({ file, relativePath }) => ({
-        key: crypto.randomUUID(),
+        key: createTaskKey(),
         file,
         relativePath,
         progress: 0,
@@ -609,7 +610,7 @@ export const FilesPanel = forwardRef<
             f.slice(0, 65536),
             f.slice(Math.max(0, f.size - 65536)),
           ]).arrayBuffer();
-          const digest = await crypto.subtle.digest("SHA-256", bytes);
+          const digest = await digestUploadSample(bytes);
           return [
             "assets",
             location.origin,
@@ -620,9 +621,7 @@ export const FilesPanel = forwardRef<
             f.name,
             f.size,
             f.lastModified,
-            Array.from(new Uint8Array(digest))
-              .map((v) => v.toString(16).padStart(2, "0"))
-              .join(""),
+            digest,
           ].join(":");
         },
         onProgress: (sent, total) =>

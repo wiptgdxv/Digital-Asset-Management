@@ -24,21 +24,21 @@ free -h
 在 Windows 开发机项目根目录执行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/package-linux-amd64.ps1 -Version 1.0.5 -PublicOrigin http://192.168.1.100:9009
+powershell -ExecutionPolicy Bypass -File scripts/package-linux-amd64.ps1 -Version 1.0.6 -PublicOrigin http://192.168.1.100:9009
 ```
 
-把 `release/digital-assets-1.0.5-linux-amd64` 整个目录传到服务器，例如 `/opt/digital-assets/releases/1.0.5`。
+把 `release/digital-assets-1.0.6-linux-amd64` 整个目录传到服务器，例如 `/opt/digital-assets/releases/1.0.6`。
 
 ## 3. 配置服务器
 
 ```bash
-cd /opt/digital-assets/releases/1.0.5
+cd /opt/digital-assets/releases/1.0.6
 ```
 
 发布包内已经包含 `.env.production`，数据库密码由打包脚本提前随机生成，无需在服务器上再次设置。打包时传入的访问地址应与员工浏览器实际使用的地址一致，例如：
 
 ```env
-IMAGE_VERSION=1.0.5
+IMAGE_VERSION=1.0.6
 ALLOWED_ORIGIN=http://192.168.1.100:9009
 COOKIE_SECURE=false
 BOOTSTRAP_ADMIN_USERNAME=admin
@@ -65,7 +65,7 @@ docker compose --env-file .env.production -f compose.production.yaml logs --tail
 docker compose --env-file .env.production -f compose.production.yaml logs --tail=200 frontend
 ```
 
-从 `1.0.4` 升级到 `1.0.5` 时，把新镜像包、`deploy.sh` 和 `upgrade.sh` 上传到原部署目录，然后执行 `sudo sh deploy/upgrade.sh`。脚本会备份并保留原 `.env.production`，自动修改镜像版本并部署。不要删除 Docker 卷。
+从旧版本升级到 `1.0.6` 时，把新镜像包、`deploy.sh` 和 `upgrade.sh` 上传到原部署目录，然后执行 `sudo sh deploy/upgrade.sh`。脚本会备份并保留原 `.env.production`，自动修改镜像版本并部署。不要删除 Docker 卷。
 
 ## 5. 初始化管理员
 

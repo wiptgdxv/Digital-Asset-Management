@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $false)]
     [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$')]
-    [string]$Version = '1.0.5',
+    [string]$Version = '1.0.6',
 
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^http://[^/]+$')]
