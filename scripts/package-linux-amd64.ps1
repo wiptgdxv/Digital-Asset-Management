@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $false)]
     [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$')]
-    [string]$Version = '1.0.8',
+    [string]$Version = '1.0.9',
 
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^http://[^/]+$')]
@@ -76,7 +76,7 @@ try {
 
     $releaseReadmePath = Join-Path $releaseDeployDir 'README.md'
     $releaseReadme = [System.IO.File]::ReadAllText($releaseReadmePath)
-    $releaseReadme = $releaseReadme.Replace('1.0.8', $Version)
+    $releaseReadme = $releaseReadme.Replace('1.0.9', $Version)
     [System.IO.File]::WriteAllText(
         $releaseReadmePath,
         $releaseReadme,
