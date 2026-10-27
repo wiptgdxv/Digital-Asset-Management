@@ -186,6 +186,14 @@ test("项目评论、回复、权限与修改时间隔离", async ({ page, reque
       .getByRole("button", { name: "展开 1 条回复" })
       .click();
     await expect(existingComment.getByText(/第一条回复/)).toBeVisible();
+    await existingComment
+      .locator(".reply-item")
+      .getByRole("button", { name: "回复", exact: true })
+      .click();
+    await expect(existingComment.getByLabel("回复评论")).toHaveValue(
+      `@${strangerUsername} `,
+    );
+    await existingComment.getByRole("button", { name: "取消" }).click();
     await existingComment.getByRole("button", { name: "收起回复" }).click();
     await expect(existingComment.getByText("第一条回复")).toHaveCount(0);
     await expect(

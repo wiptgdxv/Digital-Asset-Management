@@ -24,8 +24,16 @@ const displayTime = (iso: string) =>
     hour12: false,
   });
 
+function UserAvatar({ user }: { user: User }) {
+  return (
+    <span className="comment-avatar" aria-hidden="true">
+      {user.name.trim().slice(0, 1) || user.username.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
 function MentionText({ content }: { content: string }) {
-  const pattern = /(^|[^A-Za-z0-9._-])@([\p{L}\p{N}._-]{3,32})/gu;
+  const pattern = /(^|[^A-Za-z0-9._-])@([\p{L}\p{N}._-]{2,32})/gu;
   const parts: ReactNode[] = [];
   let cursor = 0;
   for (const match of content.matchAll(pattern)) {
@@ -67,6 +75,8 @@ function MentionTextarea({
   rows,
   session,
   onExpired,
+  autoFocus = false,
+  onSubmitShortcut,
 }: {
   id: string;
   label: string;
@@ -76,6 +86,8 @@ function MentionTextarea({
   rows: number;
   session: Session;
   onExpired: () => void;
+  autoFocus?: boolean;
+  onSubmitShortcut?: () => void;
 }) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [mention, setMention] = useState<ActiveMention | null>(null);
@@ -84,6 +96,13 @@ function MentionTextarea({
   const [searching, setSearching] = useState(false);
   const [lookupFailed, setLookupFailed] = useState(false);
   const listId = `${id}-mentions`;
+
+  useEffect(() => {
+    const element = textarea.current;
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${Math.min(element.scrollHeight, 180)}px`;
+  }, [value]);
 
   useEffect(() => {
     if (!mention) {
@@ -146,6 +165,11 @@ function MentionTextarea({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      onSubmitShortcut?.();
+      return;
+    }
     if (!mention || !users.length) {
       if (event.key === "Escape") setMention(null);
       return;
@@ -194,6 +218,7 @@ function MentionTextarea({
         }
         required
         rows={rows}
+        autoFocus={autoFocus}
       />
       {mention && (
         <div className="mention-results" id={listId} role="listbox">
@@ -245,9 +270,32 @@ export function CommentsPanel({
   const [newContent, setNewContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
-  const [replyContent, setReplyContent] = useState("");
+  const [replyTarget, setReplyTarget] = useState<User | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [replyError, setReplyError] = useState("");
+  const replyContent =
+    replyingTo === null ? "" : (replyDrafts[replyingTo] ?? "");
+
+  function setReplyContent(content: string) {
+    if (replyingTo === null) return;
+    setReplyDrafts((current) => ({ ...current, [replyingTo]: content }));
+  }
+
+  function openReply(comment: Comment, target: User, mentionTarget = false) {
+    setReplyingTo(comment.id);
+    setReplyTarget(target);
+    setRepliesExpanded(comment.id, true);
+    setReplyError("");
+    if (mentionTarget) {
+      setReplyDrafts((current) => {
+        const existing = current[comment.id] ?? "";
+        const mention = `@${target.username} `;
+        if (existing.includes(mention.trim())) return current;
+        return { ...current, [comment.id]: mention + existing };
+      });
+    }
+  }
   function setRepliesExpanded(commentId: number, shouldExpand: boolean) {
     setExpandedReplies((current) => {
       const next = new Set(current);
@@ -285,8 +333,8 @@ export function CommentsPanel({
     return () => controller.abort();
   }, [handleError, loadRevision, projectId]);
 
-  async function submitComment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitComment(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     const content = newContent.trim();
     if (!content || submitting) return;
     setSubmitting(true);
@@ -325,8 +373,9 @@ export function CommentsPanel({
         ),
       );
       setRepliesExpanded(commentId, true);
-      setReplyContent("");
+      setReplyDrafts((current) => ({ ...current, [commentId]: "" }));
       setReplyingTo(null);
+      setReplyTarget(null);
     } catch (reason) {
       handleError(reason, setReplyError);
     } finally {
@@ -366,12 +415,13 @@ export function CommentsPanel({
               rows={3}
               session={session}
               onExpired={onExpired}
+              onSubmitShortcut={() => void submitComment()}
             />
-            <p className="mention-hint">
-              输入 @ 后按姓名或用户名选择同事，对方会收到提醒。
-            </p>
             <div className="comment-actions">
-              <span>{newContent.length}/2000</span>
+              <span className="composer-guide">
+                输入 @ 提醒同事 · Ctrl + Enter 发布
+              </span>
+              <span className="character-count">{newContent.length}/2000</span>
               <button
                 className="primary"
                 type="submit"
@@ -392,105 +442,154 @@ export function CommentsPanel({
             <ul className="comment-list">
               {comments.map((comment) => (
                 <li key={comment.id} className="comment-item">
-                  <div className="comment-header">
-                    <strong>{comment.user.name}</strong>
-                    <time dateTime={comment.createdAt}>
-                      {displayTime(comment.createdAt)}
-                    </time>
-                  </div>
-                  <p className="comment-content">
-                    <MentionText content={comment.content} />
-                  </p>
-                  {comment.replies.length > 0 && (
-                    <button
-                      type="button"
-                      className="text-button replies-toggle"
-                      aria-expanded={expandedReplies.has(comment.id)}
-                      aria-controls={`comment-replies-${comment.id}`}
-                      onClick={() =>
-                        setRepliesExpanded(
-                          comment.id,
-                          !expandedReplies.has(comment.id),
-                        )
-                      }
-                    >
-                      {expandedReplies.has(comment.id)
-                        ? "收起回复"
-                        : `展开 ${comment.replies.length} 条回复`}
-                    </button>
-                  )}
-                  {comment.replies.length > 0 &&
-                    expandedReplies.has(comment.id) && (
-                      <ul
-                        className="reply-list"
-                        id={`comment-replies-${comment.id}`}
+                  <UserAvatar user={comment.user} />
+                  <div className="comment-thread-body">
+                    <div className="comment-header">
+                      <strong>{comment.user.name}</strong>
+                      <span>@{comment.user.username}</span>
+                      <time
+                        dateTime={comment.createdAt}
+                        title={displayTime(comment.createdAt)}
                       >
-                        {comment.replies.map((reply) => (
-                          <li key={reply.id} className="reply-item">
-                            <div className="comment-header">
-                              <strong>{reply.user.name}</strong>
-                              <time dateTime={reply.createdAt}>
-                                {displayTime(reply.createdAt)}
-                              </time>
-                            </div>
-                            <p className="comment-content">
-                              <MentionText content={reply.content} />
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  <button
-                    type="button"
-                    className="text-button reply-toggle"
-                    aria-expanded={replyingTo === comment.id}
-                    onClick={() => {
-                      const opening = replyingTo !== comment.id;
-                      setReplyingTo(opening ? comment.id : null);
-                      if (opening) setRepliesExpanded(comment.id, true);
-                      setReplyContent("");
-                      setReplyError("");
-                    }}
-                  >
-                    {replyingTo === comment.id ? "取消回复" : "回复"}
-                  </button>
-                  {replyingTo === comment.id && (
-                    <form
-                      className="reply-form"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void submitReply(comment.id);
-                      }}
-                    >
-                      <MentionTextarea
-                        id={`reply-${comment.id}`}
-                        label="回复评论"
-                        placeholder={`回复 ${comment.user.name}`}
-                        value={replyContent}
-                        onChange={setReplyContent}
-                        rows={2}
-                        session={session}
-                        onExpired={onExpired}
-                      />
-                      <p className="mention-hint">
-                        输入 @ 后按姓名或用户名选择同事，对方会收到提醒。
-                      </p>
-                      {replyError && (
-                        <p role="alert" className="error">
-                          {replyError}
-                        </p>
-                      )}
-                      <div className="comment-actions">
-                        <span>{replyContent.length}/2000</span>
+                        {displayTime(comment.createdAt)}
+                      </time>
+                    </div>
+                    <p className="comment-content">
+                      <MentionText content={comment.content} />
+                    </p>
+                    <div className="comment-thread-actions">
+                      <button
+                        type="button"
+                        className="text-button"
+                        aria-expanded={replyingTo === comment.id}
+                        onClick={() => {
+                          if (
+                            replyingTo === comment.id &&
+                            replyTarget?.id === comment.user.id
+                          ) {
+                            setReplyingTo(null);
+                            setReplyTarget(null);
+                          } else {
+                            openReply(comment, comment.user);
+                          }
+                        }}
+                      >
+                        回复
+                      </button>
+                      {comment.replies.length > 0 && (
                         <button
-                          type="submit"
-                          disabled={replySubmitting || !replyContent.trim()}
+                          type="button"
+                          className="text-button replies-toggle"
+                          aria-expanded={expandedReplies.has(comment.id)}
+                          aria-controls={`comment-replies-${comment.id}`}
+                          onClick={() =>
+                            setRepliesExpanded(
+                              comment.id,
+                              !expandedReplies.has(comment.id),
+                            )
+                          }
                         >
-                          {replySubmitting ? "正在回复…" : "提交回复"}
+                          {expandedReplies.has(comment.id)
+                            ? "收起回复"
+                            : `展开 ${comment.replies.length} 条回复`}
                         </button>
-                      </div>
-                    </form>
-                  )}
+                      )}
+                    </div>
+                    {comment.replies.length > 0 &&
+                      expandedReplies.has(comment.id) && (
+                        <ul
+                          className="reply-list"
+                          id={`comment-replies-${comment.id}`}
+                        >
+                          {comment.replies.map((reply) => (
+                            <li key={reply.id} className="reply-item">
+                              <UserAvatar user={reply.user} />
+                              <div className="reply-body">
+                                <div className="comment-header">
+                                  <strong>{reply.user.name}</strong>
+                                  <span>@{reply.user.username}</span>
+                                  <time
+                                    dateTime={reply.createdAt}
+                                    title={displayTime(reply.createdAt)}
+                                  >
+                                    {displayTime(reply.createdAt)}
+                                  </time>
+                                </div>
+                                <p className="comment-content">
+                                  <MentionText content={reply.content} />
+                                </p>
+                                <button
+                                  type="button"
+                                  className="text-button reply-to-reply"
+                                  onClick={() =>
+                                    openReply(comment, reply.user, true)
+                                  }
+                                >
+                                  回复
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    {replyingTo === comment.id && (
+                      <form
+                        className="reply-form"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void submitReply(comment.id);
+                        }}
+                      >
+                        <div className="reply-form-heading">
+                          <span>
+                            回复 {replyTarget?.name ?? comment.user.name}
+                          </span>
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => {
+                              setReplyingTo(null);
+                              setReplyTarget(null);
+                            }}
+                          >
+                            取消
+                          </button>
+                        </div>
+                        <MentionTextarea
+                          key={`${comment.id}-${replyTarget?.id ?? "comment"}`}
+                          id={`reply-${comment.id}`}
+                          label="回复评论"
+                          placeholder="写下回复，输入 @ 可以提醒同事"
+                          value={replyContent}
+                          onChange={setReplyContent}
+                          rows={2}
+                          session={session}
+                          onExpired={onExpired}
+                          autoFocus
+                          onSubmitShortcut={() => void submitReply(comment.id)}
+                        />
+                        {replyError && (
+                          <p role="alert" className="error">
+                            {replyError}
+                          </p>
+                        )}
+                        <div className="comment-actions">
+                          <span className="composer-guide">
+                            Ctrl + Enter 发送
+                          </span>
+                          <span className="character-count">
+                            {replyContent.length}/2000
+                          </span>
+                          <button
+                            type="submit"
+                            disabled={replySubmitting || !replyContent.trim()}
+                          >
+                            {replySubmitting ? "正在回复…" : "提交回复"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
