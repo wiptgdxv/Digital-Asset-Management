@@ -38,12 +38,15 @@ func (l *UpdateAdminLogic) UpdateAdmin(req *types.UpdateAdminRequest) (resp *typ
 	if !auth.Current(l.ctx).User.IsAdmin {
 		return nil, apperror.New(403, "只有管理员可以调整管理员权限")
 	}
-	user, err := l.svcCtx.Store.SetAdmin(l.ctx, req.Id, req.IsAdmin)
+	user, err := l.svcCtx.Store.SetAdmin(l.ctx, req.Id, req.IsAdmin, l.svcCtx.Config.BootstrapAdminUsername)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, apperror.New(404, "用户不存在")
 	}
 	if errors.Is(err, model.ErrLastAdmin) {
 		return nil, apperror.New(409, "必须至少保留一名管理员")
+	}
+	if errors.Is(err, model.ErrCannotRemoveSuperAdmin) {
+		return nil, apperror.New(409, "不能撤销超级管理员权限")
 	}
 	return &user, err
 }

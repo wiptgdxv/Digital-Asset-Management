@@ -7,6 +7,7 @@ type AuthResponse struct {
 	User               User   `json:"user"`
 	CsrfToken          string `json:"csrfToken"`
 	MustChangePassword bool   `json:"mustChangePassword"`
+	IsSuperAdmin       bool   `json:"isSuperAdmin"`
 }
 
 type ChangePasswordRequest struct {
@@ -37,6 +38,10 @@ type CreateCommentRequest struct {
 type CreateReplyRequest struct {
 	CommentId int64  `path:"id"`
 	Content   string `json:"content"`
+}
+
+type DeleteUserRequest struct {
+	Id int64 `path:"id"`
 }
 
 type FileIDRequest struct {

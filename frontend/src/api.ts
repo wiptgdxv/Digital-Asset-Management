@@ -8,6 +8,7 @@ export type Session = {
   user: User;
   csrfToken: string;
   mustChangePassword: boolean;
+  isSuperAdmin: boolean;
 };
 export type Project = {
   id: number;

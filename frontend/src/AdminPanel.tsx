@@ -16,6 +16,7 @@ export function AdminPanel({
   const [loading, setLoading] = useState(true);
   const [changingId, setChangingId] = useState<number | null>(null);
   const [resettingId, setResettingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [resetResult, setResetResult] = useState<{
     user: User;
     temporaryPassword: string;
@@ -112,12 +113,40 @@ export function AdminPanel({
     }
   }
 
+  async function deleteUser(user: User) {
+    if (
+      !window.confirm(
+        `确定删除 ${user.name}（@${user.username}）的账号吗？该用户会立即退出登录且无法再次登录；其项目、文件、评论和历史记录会保留。`,
+      )
+    )
+      return;
+    setDeletingId(user.id);
+    setError("");
+    try {
+      await api<{ message: string }>(
+        `/users/${user.id}`,
+        { method: "DELETE" },
+        session.csrfToken,
+      );
+      setUsers((current) => current.filter((item) => item.id !== user.id));
+      if (resetResult?.user.id === user.id) setResetResult(null);
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 401) onExpired();
+      else setError(errorMessage(reason));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <>
       <div className="page-title">
         <div>
           <h1>员工权限</h1>
-          <p>管理管理员权限，并为忘记密码的员工生成一次性临时密码。</p>
+          <p>
+            管理管理员权限，并为忘记密码的员工生成一次性临时密码。
+            {session.isSuperAdmin && " 超级管理员还可以删除员工账号。"}
+          </p>
         </div>
       </div>
       <section className="admin-panel">
@@ -183,7 +212,11 @@ export function AdminPanel({
                         <button
                           type="button"
                           onClick={() => void changeRole(user)}
-                          disabled={changingId !== null || resettingId !== null}
+                          disabled={
+                            changingId !== null ||
+                            resettingId !== null ||
+                            deletingId !== null
+                          }
                         >
                           {changingId === user.id
                             ? "正在保存…"
@@ -198,7 +231,11 @@ export function AdminPanel({
                               ? onChangeOwnPassword()
                               : void resetPassword(user)
                           }
-                          disabled={changingId !== null || resettingId !== null}
+                          disabled={
+                            changingId !== null ||
+                            resettingId !== null ||
+                            deletingId !== null
+                          }
                         >
                           {resettingId === user.id
                             ? "正在重置…"
@@ -206,6 +243,23 @@ export function AdminPanel({
                               ? "修改密码"
                               : "重置密码"}
                         </button>
+                        {session.isSuperAdmin &&
+                          user.id !== session.user.id && (
+                            <button
+                              type="button"
+                              className="danger-button"
+                              onClick={() => void deleteUser(user)}
+                              disabled={
+                                changingId !== null ||
+                                resettingId !== null ||
+                                deletingId !== null
+                              }
+                            >
+                              {deletingId === user.id
+                                ? "正在删除…"
+                                : "删除账号"}
+                            </button>
+                          )}
                       </div>
                     </td>
                   </tr>

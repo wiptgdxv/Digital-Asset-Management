@@ -21,7 +21,7 @@ func (s *Store) LoginUser(ctx context.Context, username string) (types.User, str
 	var u types.User
 	var hash string
 	var mustChangePassword bool
-	err := s.DB.QueryRowContext(ctx, `SELECT id,name,username,is_admin,password_hash,must_change_password FROM users WHERE username=$1`, username).Scan(&u.Id, &u.Name, &u.Username, &u.IsAdmin, &hash, &mustChangePassword)
+	err := s.DB.QueryRowContext(ctx, `SELECT id,name,username,is_admin,password_hash,must_change_password FROM users WHERE username=$1 AND deleted_at IS NULL`, username).Scan(&u.Id, &u.Name, &u.Username, &u.IsAdmin, &hash, &mustChangePassword)
 	return u, hash, mustChangePassword, err
 }
 func (s *Store) CreateSession(ctx context.Context, hash, csrf string, id int64) error {
@@ -31,7 +31,7 @@ func (s *Store) CreateSession(ctx context.Context, hash, csrf string, id int64) 
 func (s *Store) Session(ctx context.Context, hash string) (auth.Session, error) {
 	var session auth.Session
 	session.Hash = hash
-	err := s.DB.QueryRowContext(ctx, `SELECT u.id,u.name,u.username,u.is_admin,s.csrf_token,u.must_change_password FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()`, hash).Scan(&session.User.Id, &session.User.Name, &session.User.Username, &session.User.IsAdmin, &session.Csrf, &session.MustChangePassword)
+	err := s.DB.QueryRowContext(ctx, `SELECT u.id,u.name,u.username,u.is_admin,s.csrf_token,u.must_change_password FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.deleted_at IS NULL`, hash).Scan(&session.User.Id, &session.User.Name, &session.User.Username, &session.User.IsAdmin, &session.Csrf, &session.MustChangePassword)
 	return session, err
 }
 func (s *Store) Logout(ctx context.Context, hash string) error {
@@ -39,7 +39,7 @@ func (s *Store) Logout(ctx context.Context, hash string) error {
 	return err
 }
 func (s *Store) Users(ctx context.Context, q string) ([]types.User, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id,name,username,is_admin FROM users WHERE strpos(lower(name),lower($1))>0 OR strpos(username,lower($1))>0 ORDER BY name,id LIMIT 50`, q)
+	rows, err := s.DB.QueryContext(ctx, `SELECT id,name,username,is_admin FROM users WHERE deleted_at IS NULL AND (strpos(lower(name),lower($1))>0 OR strpos(username,lower($1))>0) ORDER BY name,id LIMIT 50`, q)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +53,17 @@ func (s *Store) Users(ctx context.Context, q string) ([]types.User, error) {
 		result = append(result, u)
 	}
 	return result, rows.Err()
+}
+
+func (s *Store) User(ctx context.Context, id int64) (types.User, error) {
+	var user types.User
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT id,name,username,is_admin
+		FROM users
+		WHERE id=$1 AND deleted_at IS NULL`, id).Scan(
+		&user.Id, &user.Name, &user.Username, &user.IsAdmin,
+	)
+	return user, err
 }
 func (s *Store) CreateProject(ctx context.Context, req *types.ProjectRequest, author int64) (int64, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)

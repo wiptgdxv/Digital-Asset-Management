@@ -60,5 +60,5 @@ func (l *LoginLogic) Login(req *types.LoginRequest) (resp *types.AuthResponse, e
 		return nil, e
 	}
 	l.SessionToken = token
-	return &types.AuthResponse{User: u, CsrfToken: csrf, MustChangePassword: mustChangePassword}, nil
+	return &types.AuthResponse{User: u, CsrfToken: csrf, MustChangePassword: mustChangePassword, IsSuperAdmin: auth.IsSuperAdmin(u, l.svcCtx.Config.BootstrapAdminUsername)}, nil
 }

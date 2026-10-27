@@ -29,5 +29,5 @@ func NewMeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MeLogic {
 
 func (l *MeLogic) Me() (resp *types.AuthResponse, err error) {
 	s := auth.Current(l.ctx)
-	return &types.AuthResponse{User: s.User, CsrfToken: s.Csrf, MustChangePassword: s.MustChangePassword}, nil
+	return &types.AuthResponse{User: s.User, CsrfToken: s.Csrf, MustChangePassword: s.MustChangePassword, IsSuperAdmin: auth.IsSuperAdmin(s.User, l.svcCtx.Config.BootstrapAdminUsername)}, nil
 }

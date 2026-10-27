@@ -15,15 +15,16 @@
 | 方法与路径 | 请求 | 响应 |
 | --- | --- | --- |
 | POST /api/v1/auth/register | name、username、password | message |
-| POST /api/v1/auth/login | username、password | user、csrfToken、mustChangePassword，并设置 Session Cookie |
-| GET /api/v1/auth/me | 登录 Cookie | user、csrfToken、mustChangePassword |
+| POST /api/v1/auth/login | username、password | user、csrfToken、mustChangePassword、isSuperAdmin，并设置 Session Cookie |
+| GET /api/v1/auth/me | 登录 Cookie | user、csrfToken、mustChangePassword、isSuperAdmin |
 | POST /api/v1/auth/change-password | currentPassword、newPassword、X-CSRF-Token | message |
 | POST /api/v1/auth/logout | 登录 Cookie、X-CSRF-Token | message，清除 Cookie |
 | POST /api/v1/users/:id/reset-password | 管理员、用户 ID、X-CSRF-Token | temporaryPassword，仅返回一次 |
+| DELETE /api/v1/users/:id | 超级管理员、用户 ID、X-CSRF-Token | message |
 
-用户名为 3–32 个中英文字母、数字、点、下划线或短横线，英文字母不区分大小写；密码长度 8–72 字节；姓名最多 60 字符。注册成功后需要登录。
+用户名为 2–32 个中英文字母、数字、点、下划线或短横线，英文字母不区分大小写；密码长度 8–72 字节；姓名为 1–60 个字符，因此“张三”等两字姓名和用户名均可注册。注册成功后需要登录。
 
-忘记密码由管理员重置。重置会生成 18 位随机临时密码、记录最后一次重置人和时间，并撤销目标用户的全部会话。临时密码响应设置 `Cache-Control: no-store`，数据库只保存 bcrypt 摘要。管理员不能从该接口重置自己的密码，应使用修改密码接口。
+忘记密码由管理员重置。重置会生成 18 位随机临时密码、记录最后一次重置人和时间，并撤销目标用户的全部会话。临时密码响应设置 `Cache-Control: no-store`，数据库只保存 bcrypt 摘要。管理员不能从该接口重置自己的密码，也不能重置超级管理员密码；超级管理员应使用修改密码接口。
 
 使用临时密码登录时 `mustChangePassword=true`；修改完成前，Session 中间件只允许访问 `/auth/me`、`/auth/change-password` 和 `/auth/logout`。修改成功后保留当前会话并撤销同一用户的其他会话。
 
@@ -105,7 +106,9 @@ Comment 包含 id、projectId、userId、user、content、createdAt、updatedAt�
 
 ## 管理员与项目删除
 
-`User` 包含 `isAdmin`。`PUT /api/v1/users/:id/admin` 仅管理员可调用；系统拒绝撤销最后一名管理员并返回 409。首名管理员由 `BOOTSTRAP_ADMIN_USERNAME` 初始化。
+`User` 包含 `isAdmin`。`PUT /api/v1/users/:id/admin` 仅管理员可调用；系统拒绝撤销最后一名管理员或超级管理员的权限并返回 409。由 `BOOTSTRAP_ADMIN_USERNAME` 指定且仍具管理员权限的账号是唯一超级管理员；`AuthResponse.isSuperAdmin` 用于前端展示专属操作。
+
+`DELETE /api/v1/users/:id` 仅超级管理员可调用，普通管理员没有此权限。删除采用账号软删除：立即撤销全部会话、禁止再次登录、从员工搜索和共创者选择中隐藏，并释放原用户名；项目、文件、评论及编辑历史继续保留，相关位置显示“已删除用户”。超级管理员不能删除自己。
 
 `DELETE /api/v1/projects/:id` 仅项目作者或管理员可调用。删除会级联移除评论、历史和附件记录，附件正文进入持久化清理队列异步删除并在失败后重试。
 

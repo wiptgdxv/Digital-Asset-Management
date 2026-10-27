@@ -133,6 +133,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 					Handler: SearchUsersHandler(serverCtx),
 				},
 				{
+					Method:  http.MethodDelete,
+					Path:    "/api/v1/users/:id",
+					Handler: DeleteUserHandler(serverCtx),
+				},
+				{
 					Method:  http.MethodPut,
 					Path:    "/api/v1/users/:id/admin",
 					Handler: UpdateAdminHandler(serverCtx),

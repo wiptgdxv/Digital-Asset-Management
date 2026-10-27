@@ -37,7 +37,7 @@ func (l *RegisterLogic) Register(req *types.RegisterRequest) (resp *types.Messag
 	req.Name = strings.TrimSpace(req.Name)
 	req.Username = auth.NormalizeUsername(req.Username)
 	if !auth.ValidUsername(req.Username) || utf8.RuneCountInString(req.Name) < 1 || utf8.RuneCountInString(req.Name) > 60 || len(req.Password) < 8 || len(req.Password) > 72 {
-		return nil, apperror.New(400, "请输入姓名、3–32 位用户名和 8–72 字节的密码")
+		return nil, apperror.New(400, "请输入姓名、2–32 位用户名和 8–72 字节的密码")
 	}
 	hash, e := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if e != nil {

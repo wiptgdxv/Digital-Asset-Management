@@ -42,6 +42,16 @@ func (l *ResetPasswordLogic) ResetPassword(req *types.ResetPasswordRequest) (res
 	if req.Id == admin.Id {
 		return nil, apperror.New(400, "不能重置自己的密码，请使用修改密码")
 	}
+	target, err := l.svcCtx.Store.User(l.ctx, req.Id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, apperror.New(404, "用户不存在")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if auth.IsSuperAdmin(target, l.svcCtx.Config.BootstrapAdminUsername) {
+		return nil, apperror.New(403, "不能重置超级管理员密码")
+	}
 	temporaryPassword, err := auth.TemporaryPassword(18)
 	if err != nil {
 		return nil, err

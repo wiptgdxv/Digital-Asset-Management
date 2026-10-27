@@ -85,10 +85,10 @@ export function Auth({ onLogin }: { onLogin: (session: Session) => void }) {
               name="username"
               type="text"
               required
-              minLength={3}
+              minLength={2}
               maxLength={32}
               pattern="[\p{L}\p{N}._-]+"
-              title="请输入 3–32 位中英文、数字、点、下划线或短横线"
+              title="请输入 2–32 位中英文、数字、点、下划线或短横线"
               autoComplete="username"
             />
           </label>
@@ -104,7 +104,7 @@ export function Auth({ onLogin }: { onLogin: (session: Session) => void }) {
             />
           </label>
           <p className="hint">
-            用户名支持中英文、数字、点、下划线和短横线；密码至少 8 个字符。
+            用户名支持 2–32 位中英文、数字、点、下划线和短横线；密码至少 8 个字符。
           </p>
           {!register && (
             <p className="forgot-password">忘记密码？请联系系统管理员重置。</p>

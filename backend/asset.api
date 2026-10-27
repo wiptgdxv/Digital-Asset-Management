@@ -55,6 +55,7 @@ type AuthResponse {
 	User               User   `json:"user"`
 	CsrfToken          string `json:"csrfToken"`
 	MustChangePassword bool   `json:"mustChangePassword"`
+	IsSuperAdmin       bool   `json:"isSuperAdmin"`
 }
 
 type ChangePasswordRequest {
@@ -63,6 +64,10 @@ type ChangePasswordRequest {
 }
 
 type ResetPasswordRequest {
+	Id int64 `path:"id"`
+}
+
+type DeleteUserRequest {
 	Id int64 `path:"id"`
 }
 
@@ -284,6 +289,9 @@ service asset-api {
 
 	@handler ResetPassword
 	post /api/v1/users/:id/reset-password (ResetPasswordRequest) returns (ResetPasswordResponse)
+
+	@handler DeleteUser
+	delete /api/v1/users/:id (DeleteUserRequest) returns (MessageResponse)
 
 	@handler DeleteProject
 	delete /api/v1/projects/:id (ProjectIDRequest) returns (MessageResponse)
