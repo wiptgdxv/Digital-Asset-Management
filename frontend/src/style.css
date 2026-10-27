@@ -150,9 +150,10 @@ small {
   color: #163f73;
 }
 .auth-emblem {
-  width: 44px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   flex: 0 0 auto;
+  object-fit: contain;
 }
 .auth-brand strong,
 .auth-brand span {
@@ -1724,8 +1725,8 @@ dd {
     margin: 0;
   }
   .auth-emblem {
-    width: 36px;
-    height: 41px;
+    width: 42px;
+    height: 42px;
   }
   .auth-brand strong {
     font-size: 17px;

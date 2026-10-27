@@ -41,28 +41,11 @@ export function Auth({ onLogin }: { onLogin: (session: Session) => void }) {
     <div className="auth-page">
       <div className="auth-story">
         <div className="auth-brand" aria-label="大数据实战中心">
-          <svg
+          <img
             className="auth-emblem"
-            viewBox="0 0 64 72"
-            role="img"
-            aria-label="警徽标识"
-          >
-            <path
-              d="M32 3 55 12v20c0 16-9.7 29.7-23 36C18.7 61.7 9 48 9 32V12L32 3Z"
-              fill="currentColor"
-            />
-            <path
-              d="m32 15 4.1 8.4 9.2 1.3-6.6 6.5 1.5 9.1-8.2-4.4-8.2 4.4 1.5-9.1-6.6-6.5 9.2-1.3L32 15Z"
-              fill="#fff"
-            />
-            <path
-              d="M20 47.5c3.8 4.6 7.8 7.7 12 9.8 4.2-2.1 8.2-5.2 12-9.8"
-              fill="none"
-              stroke="#fff"
-              strokeLinecap="round"
-              strokeWidth="3"
-            />
-          </svg>
+            src="/assets/police-emblem.png"
+            alt="警徽"
+          />
           <div>
             <strong>大数据实战中心</strong>
             <span>数字资产管理中心</span>
