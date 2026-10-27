@@ -26,6 +26,8 @@ function Detail({
   edit,
   onExpired,
   onDeleted,
+  targetCommentId,
+  onCommentTargetHandled,
 }: {
   project: Project;
   back: () => void;
@@ -33,6 +35,8 @@ function Detail({
   edit: (project: Project) => void;
   onExpired: () => void;
   onDeleted: () => void;
+  targetCommentId: number | null;
+  onCommentTargetHandled: () => void;
 }) {
   const p = project;
   const [refreshError, setRefreshError] = useState("");
@@ -157,6 +161,8 @@ function Detail({
           projectId={p.id}
           session={session}
           onExpired={onExpired}
+          targetCommentId={targetCommentId}
+          onTargetHandled={onCommentTargetHandled}
         />
       </div>
       <div id="project-history" className="detail-anchor">
@@ -200,6 +206,7 @@ function Workspace({
     [revision, setRevision] = useState(0);
   const [initialFiles, setInitialFiles] = useState<SelectedFile[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [targetCommentId, setTargetCommentId] = useState<number | null>(null);
   useEffect(() => {
     let stopped = false;
     const refresh = async () => {
@@ -257,8 +264,9 @@ function Workspace({
       else setError(errorMessage(e));
     }
   }
-  async function openProject(id: number) {
+  async function openProject(id: number, commentId: number | null = null) {
     setInitialFiles([]);
+    setTargetCommentId(commentId);
     setError("");
     try {
       setDetail(await api<Project>("/projects/" + id));
@@ -357,7 +365,9 @@ function Workspace({
               session={session}
               onExpired={onExpired}
               onUnreadChange={setUnreadNotifications}
-              onOpenProject={(id) => void openProject(id)}
+              onOpenProject={(projectId, commentId) =>
+                void openProject(projectId, commentId)
+              }
             />
           ) : view === "create" ? (
             <ProjectForm
@@ -398,14 +408,21 @@ function Workspace({
               project={detail}
               session={session}
               onExpired={onExpired}
+              targetCommentId={targetCommentId}
+              onCommentTargetHandled={() => setTargetCommentId(null)}
               onDeleted={() => {
                 setDetail(null);
+                setTargetCommentId(null);
                 setView("list");
                 setRevision((value) => value + 1);
               }}
-              back={() => setView("list")}
+              back={() => {
+                setTargetCommentId(null);
+                setView("list");
+              }}
               edit={(project) => {
                 setInitialFiles([]);
+                setTargetCommentId(null);
                 setDetail(project);
                 setView("edit");
               }}

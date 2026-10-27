@@ -2001,6 +2001,15 @@ dd {
 .comment-item:last-child {
   border-bottom: 0;
 }
+.comment-item.is-targeted,
+.reply-item.is-targeted {
+  background: #fff7d6;
+  box-shadow: inset 3px 0 #b78313;
+}
+.comment-item:focus,
+.reply-item:focus {
+  outline: none;
+}
 .comment-avatar {
   display: inline-flex;
   align-items: center;
@@ -2142,15 +2151,31 @@ dd {
 .notification-item {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr);
+  width: 100%;
   gap: 12px;
   padding: 14px 16px;
+  border: 0;
   border-bottom: 1px solid #e5e9ef;
+  border-radius: 0;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  white-space: normal;
 }
 .notification-item:last-child {
   border-bottom: 0;
 }
+.notification-item:hover {
+  background: #f8fafc;
+}
+.notification-item:focus-visible {
+  outline-offset: -3px;
+}
 .notification-item.is-unread {
   background: #f7faff;
+}
+.notification-item.is-unread:hover {
+  background: #f2f6fc;
 }
 .notification-state {
   width: 7px;
@@ -2168,6 +2193,7 @@ dd {
 }
 .notification-project {
   margin: 0 4px;
+  color: #245bc1;
   font-weight: 600;
 }
 .notification-item blockquote {
@@ -2182,6 +2208,17 @@ dd {
 .notification-item time {
   color: #718096;
   font-size: 12px;
+}
+.notification-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.notification-open-label {
+  color: #245bc1;
+  font-size: 12px;
+  font-weight: 600;
 }
 @media (max-width: 600px) {
   .demo-showcase {

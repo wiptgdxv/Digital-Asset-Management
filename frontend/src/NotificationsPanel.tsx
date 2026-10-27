@@ -22,7 +22,7 @@ export function NotificationsPanel({
   session: Session;
   onExpired: () => void;
   onUnreadChange: (count: number) => void;
-  onOpenProject: (id: number) => void;
+  onOpenProject: (projectId: number, commentId: number) => void;
 }) {
   const [data, setData] = useState<NotificationsResponse>({
     items: [],
@@ -104,29 +104,30 @@ export function NotificationsPanel({
       ) : (
         <section className="notification-list" aria-label="提醒列表">
           {data.items.map((item) => (
-            <article
+            <button
+              type="button"
               key={item.id}
               className={`notification-item${item.isRead ? "" : " is-unread"}`}
+              onClick={() => onOpenProject(item.projectId, item.commentId)}
             >
               <span className="notification-state" aria-hidden="true" />
               <div>
                 <p>
                   <strong>{item.actor.name}</strong> 在项目
-                  <button
-                    type="button"
-                    className="text-button notification-project"
-                    onClick={() => onOpenProject(item.projectId)}
-                  >
+                  <span className="notification-project">
                     {item.projectName}
-                  </button>
+                  </span>
                   中提到了你
                 </p>
                 <blockquote>{item.content}</blockquote>
-                <time dateTime={item.createdAt}>
-                  {displayTime(item.createdAt)}
-                </time>
+                <div className="notification-footer">
+                  <time dateTime={item.createdAt}>
+                    {displayTime(item.createdAt)}
+                  </time>
+                  <span className="notification-open-label">查看评论</span>
+                </div>
               </div>
-            </article>
+            </button>
           ))}
         </section>
       )}

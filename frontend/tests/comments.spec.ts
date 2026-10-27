@@ -171,7 +171,14 @@ test("项目评论、回复、权限与修改时间隔离", async ({ page, reque
     await page.getByRole("button", { name: "登录", exact: true }).click();
     await expect(page.getByLabel("1 条未读提醒")).toBeVisible();
     await page.getByRole("button", { name: /提醒/ }).click();
-    await page.getByRole("button", { name: project.name, exact: true }).click();
+    await page.screenshot({
+      path: "test-results/notification-list.png",
+      fullPage: true,
+    });
+    await page
+      .locator(".notification-item")
+      .filter({ hasText: project.name })
+      .click();
     await expect(
       page.getByRole("heading", { name: "评论与回复" }),
     ).toBeVisible();
@@ -181,6 +188,15 @@ test("项目评论、回复、权限与修改时间隔离", async ({ page, reque
     const existingComment = page
       .locator(".comment-item")
       .filter({ hasText: "请 @" });
+    const targetedReply = existingComment
+      .locator(".reply-item.is-targeted")
+      .filter({ hasText: "第一条回复" });
+    await expect(targetedReply).toBeVisible();
+    await page.screenshot({
+      path: "test-results/notification-comment-target.png",
+      fullPage: true,
+    });
+    await existingComment.getByRole("button", { name: "收起回复" }).click();
     await expect(existingComment.getByText("第一条回复")).toHaveCount(0);
     await existingComment
       .getByRole("button", { name: "展开 1 条回复" })

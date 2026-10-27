@@ -255,10 +255,14 @@ export function CommentsPanel({
   projectId,
   session,
   onExpired,
+  targetCommentId = null,
+  onTargetHandled,
 }: {
   projectId: number;
   session: Session;
   onExpired: () => void;
+  targetCommentId?: number | null;
+  onTargetHandled?: () => void;
 }) {
   const [expandedReplies, setExpandedReplies] = useState<Set<number>>(
     () => new Set(),
@@ -274,6 +278,9 @@ export function CommentsPanel({
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [replyError, setReplyError] = useState("");
+  const [highlightedCommentId, setHighlightedCommentId] = useState<
+    number | null
+  >(null);
   const replyContent =
     replyingTo === null ? "" : (replyDrafts[replyingTo] ?? "");
 
@@ -332,6 +339,46 @@ export function CommentsPanel({
       });
     return () => controller.abort();
   }, [handleError, loadRevision, projectId]);
+
+  useEffect(() => {
+    if (loading || !targetCommentId) return;
+    const parent = comments.find(
+      (comment) =>
+        comment.id === targetCommentId ||
+        comment.replies.some((reply) => reply.id === targetCommentId),
+    );
+    if (!parent) {
+      onTargetHandled?.();
+      return;
+    }
+    if (parent.id !== targetCommentId) setRepliesExpanded(parent.id, true);
+
+    const locateTimer = window.setTimeout(() => {
+      const target = document.getElementById(
+        `project-comment-${targetCommentId}`,
+      );
+      if (!target) {
+        onTargetHandled?.();
+        return;
+      }
+      target.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "center",
+      });
+      target.focus({ preventScroll: true });
+      setHighlightedCommentId(targetCommentId);
+      onTargetHandled?.();
+    }, 50);
+    return () => window.clearTimeout(locateTimer);
+  }, [comments, loading, onTargetHandled, targetCommentId]);
+
+  useEffect(() => {
+    if (!highlightedCommentId) return;
+    const timer = window.setTimeout(() => setHighlightedCommentId(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [highlightedCommentId]);
 
   async function submitComment(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -441,7 +488,14 @@ export function CommentsPanel({
           ) : (
             <ul className="comment-list">
               {comments.map((comment) => (
-                <li key={comment.id} className="comment-item">
+                <li
+                  key={comment.id}
+                  id={`project-comment-${comment.id}`}
+                  tabIndex={-1}
+                  className={`comment-item${
+                    highlightedCommentId === comment.id ? " is-targeted" : ""
+                  }`}
+                >
                   <UserAvatar user={comment.user} />
                   <div className="comment-thread-body">
                     <div className="comment-header">
@@ -502,7 +556,16 @@ export function CommentsPanel({
                           id={`comment-replies-${comment.id}`}
                         >
                           {comment.replies.map((reply) => (
-                            <li key={reply.id} className="reply-item">
+                            <li
+                              key={reply.id}
+                              id={`project-comment-${reply.id}`}
+                              tabIndex={-1}
+                              className={`reply-item${
+                                highlightedCommentId === reply.id
+                                  ? " is-targeted"
+                                  : ""
+                              }`}
+                            >
                               <UserAvatar user={reply.user} />
                               <div className="reply-body">
                                 <div className="comment-header">
