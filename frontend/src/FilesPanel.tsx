@@ -32,7 +32,7 @@ type Task = {
   status: "ready" | "uploading" | "paused" | "error" | "complete";
   error?: string;
 };
-type SelectedFile = { file: File; relativePath: string };
+export type SelectedFile = { file: File; relativePath: string };
 export type FilesPanelHandle = { commit: () => Promise<void> };
 type DroppedEntry = {
   isFile: boolean;
@@ -79,7 +79,9 @@ async function filesFromEntry(entry: DroppedEntry): Promise<SelectedFile[]> {
   return (await Promise.all(children.map(filesFromEntry))).flat();
 }
 
-async function filesFromDrop(data: DataTransfer): Promise<SelectedFile[]> {
+export async function filesFromDrop(
+  data: DataTransfer,
+): Promise<SelectedFile[]> {
   const entries = Array.from(data.items)
     .map((item): DroppedEntry | null => {
       const getEntry = (
@@ -93,6 +95,13 @@ async function filesFromDrop(data: DataTransfer): Promise<SelectedFile[]> {
   if (entries.length)
     return (await Promise.all(entries.map(filesFromEntry))).flat();
   return Array.from(data.files).map((file) => ({ file, relativePath: "" }));
+}
+
+export function filesFromList(files: FileList | null): SelectedFile[] {
+  return Array.from(files ?? []).map((file) => {
+    const parts = file.webkitRelativePath.split("/").filter(Boolean);
+    return { file, relativePath: parts.slice(0, -1).join("/") };
+  });
 }
 
 const shownPath = (item: { filename: string; relativePath: string }) =>
@@ -444,12 +453,65 @@ function FileTree({
   );
 }
 
+export function PendingFileTree({
+  files,
+  onRemove,
+  onRemoveFolder,
+}: {
+  files: SelectedFile[];
+  onRemove: (file: SelectedFile) => void;
+  onRemoveFolder: (files: SelectedFile[]) => void;
+}) {
+  const tasks: Task[] = files.map((item, index) => ({
+    key: `pending-${index}-${item.relativePath}-${item.file.name}`,
+    file: item.file,
+    relativePath: item.relativePath,
+    progress: 0,
+    status: "ready",
+  }));
+  if (!tasks.length) return null;
+  return (
+    <FileTree
+      node={buildFileTree([], tasks)}
+      projectId={0}
+      demo={false}
+      editable
+      active={false}
+      deletingId={0}
+      pendingDeleteIds={new Set()}
+      onPreview={() => undefined}
+      onRemove={(item) => {
+        if (item.task)
+          onRemove({
+            file: item.task.file,
+            relativePath: item.task.relativePath,
+          });
+      }}
+      onRemoveFolder={(items) =>
+        onRemoveFolder(
+          items.flatMap((item) =>
+            item.task
+              ? [
+                  {
+                    file: item.task.file,
+                    relativePath: item.task.relativePath,
+                  },
+                ]
+              : [],
+          ),
+        )
+      }
+      onPause={() => undefined}
+    />
+  );
+}
+
 export const FilesPanel = forwardRef<
   FilesPanelHandle,
   {
     projectId: number;
     session: Session;
-    initialFiles?: File[];
+    initialFiles?: SelectedFile[];
     onSaved?: () => void;
     onPendingChange?: (pending: boolean) => void;
     kind?: "project" | "demo";
@@ -481,10 +543,10 @@ export const FilesPanel = forwardRef<
   );
   const [dragging, setDragging] = useState(false);
   const [tasks, setTasks] = useState<Task[]>(() =>
-    initialFiles.map((file) => ({
+    initialFiles.map(({ file, relativePath }) => ({
       key: createTaskKey(),
       file,
-      relativePath: "",
+      relativePath,
       progress: 0,
       status: "ready",
     })),
@@ -559,10 +621,7 @@ export const FilesPanel = forwardRef<
     ]);
   }
   function pick(e: ChangeEvent<HTMLInputElement>) {
-    const selected = Array.from(e.target.files ?? []).map((file) => ({
-      file,
-      relativePath: "",
-    }));
+    const selected = filesFromList(e.target.files);
     e.target.value = "";
     enqueue(selected);
   }
@@ -608,10 +667,7 @@ export const FilesPanel = forwardRef<
         fingerprint: async (file) => {
           const f = file as File;
           const bytes = await readBlobAsArrayBuffer(
-            new Blob([
-              f.slice(0, 65536),
-              f.slice(Math.max(0, f.size - 65536)),
-            ]),
+            new Blob([f.slice(0, 65536), f.slice(Math.max(0, f.size - 65536))]),
           );
           const digest = await digestUploadSample(bytes);
           return [

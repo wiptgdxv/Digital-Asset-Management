@@ -16,7 +16,11 @@ import {
   type User,
 } from "./api";
 import { categories } from "./ProjectForm";
-import { FilesPanel, type FilesPanelHandle } from "./FilesPanel";
+import {
+  FilesPanel,
+  type FilesPanelHandle,
+  type SelectedFile,
+} from "./FilesPanel";
 import { createCompatibleAbortController, readUtf8File } from "./browserCompat";
 import {
   clearProjectDraft,
@@ -64,7 +68,7 @@ export function ProjectEdit({
   onSaved: (project: Project) => void;
   onCancel: () => void;
   onExpired: () => void;
-  initialFiles?: File[];
+  initialFiles?: SelectedFile[];
   onProjectChanged?: (project: Project) => void;
 }) {
   const draftKey = `assets:project-edit-draft:${session.user.id}:${initialProject.id}`;

@@ -6,7 +6,7 @@ import { api, ApiError, errorMessage, type Session, type Project } from "./api";
 import { Auth } from "./Auth";
 import { ProjectForm, categories } from "./ProjectForm";
 import "./style.css";
-import { FilesPanel } from "./FilesPanel";
+import { FilesPanel, type SelectedFile } from "./FilesPanel";
 import { ProjectEdit } from "./ProjectEdit";
 import { CommentsPanel } from "./CommentsPanel";
 import { ProjectHistory } from "./ProjectHistory";
@@ -198,7 +198,7 @@ function Workspace({
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [revision, setRevision] = useState(0);
-  const [initialFiles, setInitialFiles] = useState<File[]>([]);
+  const [initialFiles, setInitialFiles] = useState<SelectedFile[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   useEffect(() => {
     let stopped = false;

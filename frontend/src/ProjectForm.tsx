@@ -4,10 +4,17 @@ import {
   useState,
   type FormEvent,
   type ChangeEvent,
+  type DragEvent,
 } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MAX_FILE_SIZE } from "./FilesPanel";
+import {
+  filesFromDrop,
+  filesFromList,
+  MAX_FILE_SIZE,
+  PendingFileTree,
+  type SelectedFile,
+} from "./FilesPanel";
 import { createCompatibleAbortController, readUtf8File } from "./browserCompat";
 import {
   api,
@@ -42,7 +49,7 @@ export function ProjectForm({
   onExpired,
 }: {
   session: Session;
-  onCreated: (p: Project, files: File[]) => void;
+  onCreated: (p: Project, files: SelectedFile[]) => void;
   onCancel: () => void;
   onExpired: () => void;
 }) {
@@ -65,7 +72,9 @@ export function ProjectForm({
       readProjectDraft<CreateDraftValue>(draftKey),
     );
   const fileInput = useRef<HTMLInputElement>(null);
-  const [projectFiles, setProjectFiles] = useState<File[]>([]);
+  const projectFileInput = useRef<HTMLInputElement>(null);
+  const [projectFiles, setProjectFiles] = useState<SelectedFile[]>([]);
+  const [draggingFiles, setDraggingFiles] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   const [importNotice, setImportNotice] = useState("");
@@ -195,6 +204,42 @@ export function ProjectForm({
     } finally {
       setImporting(false);
     }
+  }
+
+  function addProjectFiles(selectedFiles: SelectedFile[]) {
+    const invalid = selectedFiles.find(({ file }) => file.size > MAX_FILE_SIZE);
+    if (invalid) {
+      const path = invalid.relativePath
+        ? `${invalid.relativePath}/${invalid.file.name}`
+        : invalid.file.name;
+      setError(`${path} 超过单文件 5 GB 上限。`);
+      return;
+    }
+    setProjectFiles((current) => [...current, ...selectedFiles]);
+    setError("");
+  }
+
+  async function dropProjectFiles(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDraggingFiles(false);
+    try {
+      addProjectFiles(await filesFromDrop(event.dataTransfer));
+    } catch {
+      setError("无法读取拖入的文件夹，请重新拖入或逐个选择文件。");
+    }
+  }
+
+  function removeProjectFiles(selectedFiles: SelectedFile[]) {
+    setProjectFiles((current) =>
+      current.filter(
+        (item) =>
+          !selectedFiles.some(
+            (selected) =>
+              selected.file === item.file &&
+              selected.relativePath === item.relativePath,
+          ),
+      ),
+    );
   }
   useEffect(() => {
     if (!query.startsWith("@")) {
@@ -429,26 +474,57 @@ export function ProjectForm({
         <fieldset>
           <legend>项目文件</legend>
           <p className="hint">
-            可选择多个原始文件，每个最大 5 GB。项目发布后，在详情页开始上传。
+            文件和文件夹会先加入待发布列表，每个文件最大 5
+            GB。发布项目后开始上传，目录结构会保留。
           </p>
-          <input
-            type="file"
-            multiple
-            aria-label="选择待上传项目文件"
-            onChange={(e) => {
-              const chosen = Array.from(e.target.files ?? []);
-              if (chosen.some((f) => f.size > MAX_FILE_SIZE)) {
-                setError("单个项目文件不能超过 5 GB");
-                e.target.value = "";
-                return;
-              }
-              setProjectFiles(chosen);
-              setError("");
+          <div
+            className={`file-drop-zone${draggingFiles ? " is-dragging" : ""}`}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setDraggingFiles(true);
             }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "copy";
+              setDraggingFiles(true);
+            }}
+            onDragLeave={(event) => {
+              const next = event.relatedTarget;
+              if (
+                !(next instanceof Node) ||
+                !event.currentTarget.contains(next)
+              )
+                setDraggingFiles(false);
+            }}
+            onDrop={(event) => void dropProjectFiles(event)}
+          >
+            <div className="file-drop-copy">
+              <strong>拖入文件或整个文件夹</strong>
+              <span>程序自动识别并保留文件夹结构；空文件夹不会上传。</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => projectFileInput.current?.click()}
+            >
+              添加文件
+            </button>
+            <input
+              ref={projectFileInput}
+              type="file"
+              hidden
+              multiple
+              aria-label="选择待上传项目文件"
+              onChange={(event) => {
+                addProjectFiles(filesFromList(event.target.files));
+                event.target.value = "";
+              }}
+            />
+          </div>
+          <PendingFileTree
+            files={projectFiles}
+            onRemove={(file) => removeProjectFiles([file])}
+            onRemoveFolder={removeProjectFiles}
           />
-          {projectFiles.length > 0 && (
-            <p>已选择 {projectFiles.length} 个文件</p>
-          )}
         </fieldset>
         <fieldset>
           <legend>共创者</legend>
