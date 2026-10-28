@@ -169,10 +169,17 @@ func (s *Store) UpdateProject(ctx context.Context, req *types.UpdateProjectReque
 	effectiveIDs := currentIDs
 	if editor == author || isAdmin {
 		effectiveIDs = requestedIDs
-		if _, err = tx.ExecContext(ctx, `DELETE FROM project_collaborators WHERE project_id=$1`, req.Id); err != nil {
-			return types.Project{}, err
+		for _, id := range currentIDs {
+			if !containsID(requestedIDs, id) {
+				if _, err = tx.ExecContext(ctx, `DELETE FROM project_collaborators WHERE project_id=$1 AND user_id=$2`, req.Id, id); err != nil {
+					return types.Project{}, err
+				}
+			}
 		}
 		for _, id := range requestedIDs {
+			if containsID(currentIDs, id) {
+				continue
+			}
 			if _, err = tx.ExecContext(ctx, `INSERT INTO project_collaborators(project_id,user_id) VALUES($1,$2)`, req.Id, id); err != nil {
 				return types.Project{}, err
 			}
@@ -199,6 +206,15 @@ func (s *Store) UpdateProject(ctx context.Context, req *types.UpdateProjectReque
 		return types.Project{}, err
 	}
 	return s.Project(ctx, req.Id)
+}
+
+func containsID(ids []int64, target int64) bool {
+	for _, id := range ids {
+		if id == target {
+			return true
+		}
+	}
+	return false
 }
 func (s *Store) Project(ctx context.Context, id int64) (types.Project, error) {
 	return scanProject(s.DB.QueryRowContext(ctx, `SELECT `+projectColumns+projectJoins+` WHERE p.id=$1`, id))

@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,6 +13,7 @@ import { ProjectHistory } from "./ProjectHistory";
 import { AdminPanel } from "./AdminPanel";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { PasswordPanel } from "./PasswordPanel";
+import { ChatPanel } from "./ChatPanel";
 import { createCompatibleAbortController } from "./browserCompat";
 const date = (value: string) =>
   new Date(value).toLocaleString("zh-CN", {
@@ -28,6 +29,7 @@ function Detail({
   onDeleted,
   targetCommentId,
   onCommentTargetHandled,
+  onOpenChat,
 }: {
   project: Project;
   back: () => void;
@@ -37,6 +39,7 @@ function Detail({
   onDeleted: () => void;
   targetCommentId: number | null;
   onCommentTargetHandled: () => void;
+  onOpenChat: (projectId: number) => void;
 }) {
   const p = project;
   const [refreshError, setRefreshError] = useState("");
@@ -80,6 +83,13 @@ function Detail({
           <p>{p.summary || "暂无简介"}</p>
         </div>
         <div className="detail-actions">
+          {(session.isSuperAdmin ||
+            session.user.id === p.author.id ||
+            p.collaborators.some((user) => user.id === session.user.id)) && (
+            <button type="button" onClick={() => onOpenChat(p.id)}>
+              项目群聊
+            </button>
+          )}
           {(session.user.id === p.author.id || session.user.isAdmin) && (
             <button
               className="danger-button"
@@ -196,6 +206,7 @@ function Workspace({
       | "edit"
       | "admin"
       | "notifications"
+      | "chat"
       | "password"
     >("list"),
     [detail, setDetail] = useState<Project | null>(null),
@@ -205,8 +216,75 @@ function Workspace({
     [error, setError] = useState(""),
     [revision, setRevision] = useState(0);
   const [initialFiles, setInitialFiles] = useState<SelectedFile[]>([]);
+  const [initialDemoFiles, setInitialDemoFiles] = useState<SelectedFile[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [targetCommentId, setTargetCommentId] = useState<number | null>(null);
+  const [chatRevision, setChatRevision] = useState(0);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [chatUploading, setChatUploading] = useState(false);
+  const [chatVisited, setChatVisited] = useState(false);
+  const [chatProjectTarget, setChatProjectTarget] = useState<number | null>(
+    null,
+  );
+  const refreshChat = useCallback(
+    () => setChatRevision((value) => value + 1),
+    [],
+  );
+  const refreshChatUnread = useCallback(() => {
+    void api<{ items: { unread: number }[] }>("/chat/conversations")
+      .then((result) =>
+        setChatUnread(result.items.reduce((sum, item) => sum + item.unread, 0)),
+      )
+      .catch(() => {
+        /* Retry on the next event or reconnect. */
+      });
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    api<{ items: { unread: number }[] }>("/chat/conversations")
+      .then((result) => {
+        if (!cancelled)
+          setChatUnread(
+            result.items.reduce((sum, item) => sum + item.unread, 0),
+          );
+      })
+      .catch(() => {
+        /* Chat may be unavailable while a deployment is updating. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chatRevision]);
+  useEffect(() => {
+    let stopped = false;
+    let socket: WebSocket | null = null;
+    let retry: number | undefined;
+    let pendingRefresh: number | undefined;
+    const connect = () => {
+      socket = new WebSocket(
+        `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/api/v1/chat/events`,
+      );
+      socket.onopen = refreshChat;
+      socket.onmessage = () => {
+        if (pendingRefresh !== undefined) return;
+        pendingRefresh = window.setTimeout(() => {
+          pendingRefresh = undefined;
+          refreshChat();
+        }, 200);
+      };
+      socket.onclose = () => {
+        if (!stopped) retry = window.setTimeout(connect, 5000);
+      };
+      socket.onerror = () => socket?.close();
+    };
+    connect();
+    return () => {
+      stopped = true;
+      if (retry) window.clearTimeout(retry);
+      if (pendingRefresh !== undefined) window.clearTimeout(pendingRefresh);
+      socket?.close();
+    };
+  }, [refreshChat]);
   useEffect(() => {
     let stopped = false;
     const refresh = async () => {
@@ -256,6 +334,11 @@ function Workspace({
     return () => c.abort();
   }, [scope, search, category, sort, page, revision, view]);
   async function logout() {
+    if (
+      chatUploading &&
+      !window.confirm("聊天文件正在上传，退出登录会中断上传，确定退出吗？")
+    )
+      return;
     try {
       await api("/auth/logout", { method: "POST" }, session.csrfToken);
       onExpired();
@@ -266,6 +349,7 @@ function Workspace({
   }
   async function openProject(id: number, commentId: number | null = null) {
     setInitialFiles([]);
+    setInitialDemoFiles([]);
     setTargetCommentId(commentId);
     setError("");
     try {
@@ -316,6 +400,24 @@ function Workspace({
           </button>
           <button
             className="nav-notification"
+            aria-current={view === "chat" ? "page" : undefined}
+            onClick={() => {
+              setChatVisited(true);
+              setView("chat");
+            }}
+          >
+            <span>消息</span>
+            {chatUnread > 0 && (
+              <span
+                className="notification-count"
+                aria-label={`${chatUnread} 条未读消息`}
+              >
+                {chatUnread > 99 ? "99+" : chatUnread}
+              </span>
+            )}
+          </button>
+          <button
+            className="nav-notification"
             aria-current={view === "notifications" ? "page" : undefined}
             onClick={() => setView("notifications")}
           >
@@ -360,7 +462,7 @@ function Workspace({
               onChanged={() => setView("list")}
               onCancel={() => setView("list")}
             />
-          ) : view === "notifications" ? (
+          ) : view === "chat" ? null : view === "notifications" ? (
             <NotificationsPanel
               session={session}
               onExpired={onExpired}
@@ -374,10 +476,11 @@ function Workspace({
               session={session}
               onExpired={onExpired}
               onCancel={() => setView("list")}
-              onCreated={(p, files) => {
+              onCreated={(p, files, demoFiles) => {
                 setInitialFiles(files);
+                setInitialDemoFiles(demoFiles);
                 setDetail(p);
-                setView(files.length ? "edit" : "detail");
+                setView(files.length || demoFiles.length ? "edit" : "detail");
                 setRevision((v) => v + 1);
               }}
             />
@@ -387,6 +490,7 @@ function Workspace({
               initialProject={detail}
               session={session}
               initialFiles={initialFiles}
+              initialDemoFiles={initialDemoFiles}
               onExpired={onExpired}
               onProjectChanged={(project) => {
                 setDetail(project);
@@ -394,10 +498,12 @@ function Workspace({
               }}
               onCancel={() => {
                 setInitialFiles([]);
+                setInitialDemoFiles([]);
                 setView("detail");
               }}
               onSaved={(project) => {
                 setInitialFiles([]);
+                setInitialDemoFiles([]);
                 setDetail(project);
                 setView("detail");
                 setRevision((value) => value + 1);
@@ -410,6 +516,11 @@ function Workspace({
               onExpired={onExpired}
               targetCommentId={targetCommentId}
               onCommentTargetHandled={() => setTargetCommentId(null)}
+              onOpenChat={(projectId) => {
+                setChatProjectTarget(projectId);
+                setChatVisited(true);
+                setView("chat");
+              }}
               onDeleted={() => {
                 setDetail(null);
                 setTargetCommentId(null);
@@ -422,6 +533,7 @@ function Workspace({
               }}
               edit={(project) => {
                 setInitialFiles([]);
+                setInitialDemoFiles([]);
                 setTargetCommentId(null);
                 setDetail(project);
                 setView("edit");
@@ -611,6 +723,21 @@ function Workspace({
                 </div>
               )}
             </>
+          )}
+          {chatVisited && (
+            <div hidden={view !== "chat"}>
+              <ChatPanel
+                session={session}
+                onExpired={onExpired}
+                revision={chatRevision}
+                onRefresh={refreshChat}
+                onRead={refreshChatUnread}
+                visible={view === "chat"}
+                targetProjectId={chatProjectTarget}
+                onProjectTargetHandled={() => setChatProjectTarget(null)}
+                onUploadingChange={setChatUploading}
+              />
+            </div>
           )}
         </main>
       </div>

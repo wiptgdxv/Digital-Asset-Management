@@ -49,7 +49,11 @@ export function ProjectForm({
   onExpired,
 }: {
   session: Session;
-  onCreated: (p: Project, files: SelectedFile[]) => void;
+  onCreated: (
+    p: Project,
+    files: SelectedFile[],
+    demoFiles: SelectedFile[],
+  ) => void;
   onCancel: () => void;
   onExpired: () => void;
 }) {
@@ -73,12 +77,23 @@ export function ProjectForm({
     );
   const fileInput = useRef<HTMLInputElement>(null);
   const projectFileInput = useRef<HTMLInputElement>(null);
+  const demoFileInput = useRef<HTMLInputElement>(null);
   const [projectFiles, setProjectFiles] = useState<SelectedFile[]>([]);
+  const [demoFiles, setDemoFiles] = useState<SelectedFile[]>([]);
+  const [draggingDemoFiles, setDraggingDemoFiles] = useState(false);
+  const [readingDemoFiles, setReadingDemoFiles] = useState(false);
+  const [demoNotice, setDemoNotice] = useState("");
+  const [demoError, setDemoError] = useState("");
   const [draggingFiles, setDraggingFiles] = useState(false);
+  const [readingFiles, setReadingFiles] = useState(false);
+  const readingFilesRef = useRef(false);
+  const [fileNotice, setFileNotice] = useState("");
+  const [fileError, setFileError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   const [importNotice, setImportNotice] = useState("");
-  const hasUnsavedChanges = dirty || projectFiles.length > 0;
+  const hasUnsavedChanges =
+    dirty || projectFiles.length > 0 || demoFiles.length > 0 || readingFiles;
 
   useEffect(() => {
     if (!dirty) return;
@@ -207,30 +222,98 @@ export function ProjectForm({
   }
 
   function addProjectFiles(selectedFiles: SelectedFile[]) {
+    setFileNotice("");
+    setFileError("");
+    if (!selectedFiles.length) {
+      setFileNotice("没有找到可添加的文件。空文件夹不会上传。");
+      return;
+    }
     const invalid = selectedFiles.find(({ file }) => file.size > MAX_FILE_SIZE);
     if (invalid) {
       const path = invalid.relativePath
         ? `${invalid.relativePath}/${invalid.file.name}`
         : invalid.file.name;
-      setError(`${path} 超过单文件 5 GB 上限。`);
+      setFileError(`${path} 超过单文件 5 GB 上限，本次文件未添加。`);
       return;
     }
     setProjectFiles((current) => [...current, ...selectedFiles]);
-    setError("");
+    setFileNotice(`已添加 ${selectedFiles.length} 个文件到待上传列表。`);
   }
 
   async function dropProjectFiles(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDraggingFiles(false);
+    if (readingFilesRef.current || busy) return;
+    readingFilesRef.current = true;
+    setReadingFiles(true);
+    setFileError("");
+    setFileNotice("");
     try {
       addProjectFiles(await filesFromDrop(event.dataTransfer));
     } catch {
-      setError("无法读取拖入的文件夹，请重新拖入或逐个选择文件。");
+      setFileError("无法读取拖入的文件或文件夹，请重新拖入或逐个选择文件。");
+    } finally {
+      readingFilesRef.current = false;
+      setReadingFiles(false);
     }
   }
 
   function removeProjectFiles(selectedFiles: SelectedFile[]) {
+    setFileNotice("");
     setProjectFiles((current) =>
+      current.filter(
+        (item) =>
+          !selectedFiles.some(
+            (selected) =>
+              selected.file === item.file &&
+              selected.relativePath === item.relativePath,
+          ),
+      ),
+    );
+  }
+
+  function addDemoFiles(selectedFiles: SelectedFile[]) {
+    setDemoNotice("");
+    setDemoError("");
+    if (!selectedFiles.length) {
+      setDemoNotice("没有找到可添加的文件。空文件夹不会上传。");
+      return;
+    }
+    const invalid = selectedFiles.find(({ file }) => file.size > MAX_FILE_SIZE);
+    if (invalid) {
+      const path = invalid.relativePath
+        ? `${invalid.relativePath}/${invalid.file.name}`
+        : invalid.file.name;
+      setDemoError(`${path} 超过单文件 5 GB 上限，本次材料未添加。`);
+      return;
+    }
+    setDemoFiles((current) => [...current, ...selectedFiles]);
+    setDemoNotice(`已添加 ${selectedFiles.length} 个演示材料到待上传列表。`);
+  }
+
+  async function dropDemoFiles(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDraggingDemoFiles(false);
+    if (readingFilesRef.current || busy) return;
+    readingFilesRef.current = true;
+    setReadingFiles(true);
+    setReadingDemoFiles(true);
+    setDemoError("");
+    setDemoNotice("");
+    try {
+      addDemoFiles(await filesFromDrop(event.dataTransfer));
+    } catch {
+      setDemoError("无法读取拖入的演示材料，请重新拖入或逐个选择文件。");
+    } finally {
+      readingFilesRef.current = false;
+      setReadingFiles(false);
+      setReadingDemoFiles(false);
+    }
+  }
+
+  function removeDemoFiles(selectedFiles: SelectedFile[]) {
+    setDemoNotice("");
+    setDemoFiles((current) =>
       current.filter(
         (item) =>
           !selectedFiles.some(
@@ -277,7 +360,7 @@ export function ProjectForm({
   }, [onExpired, query, selected, session.user.id]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (importing || busy) return;
+    if (importing || busy || readingFilesRef.current) return;
     setBusy(true);
     setError("");
     try {
@@ -329,7 +412,7 @@ export function ProjectForm({
       );
       clearProjectDraft(draftKey);
       setRecoverableDraft(null);
-      onCreated(created, projectFiles);
+      onCreated(created, projectFiles, demoEnabled ? demoFiles : []);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) onExpired();
       else setError(errorMessage(e));
@@ -344,7 +427,7 @@ export function ProjectForm({
           <h1>创建项目</h1>
           <p>记录项目成果，邀请同事一起维护。</p>
         </div>
-        <button onClick={leave} disabled={busy || importing}>
+        <button onClick={leave} disabled={busy || importing || readingFiles}>
           返回列表
         </button>
       </div>
@@ -474,8 +557,8 @@ export function ProjectForm({
         <fieldset>
           <legend>项目文件</legend>
           <p className="hint">
-            文件和文件夹会先加入待发布列表，每个文件最大 5
-            GB。发布项目后开始上传，目录结构会保留。
+            文件会先暂存在当前页面，每个文件最大 5 GB，目录结构会保留。
+            发布项目后，在文件编辑页点击“保存修改”才会开始上传。
           </p>
           <div
             className={`file-drop-zone${draggingFiles ? " is-dragging" : ""}`}
@@ -499,11 +582,16 @@ export function ProjectForm({
             onDrop={(event) => void dropProjectFiles(event)}
           >
             <div className="file-drop-copy">
-              <strong>拖入文件或整个文件夹</strong>
-              <span>程序自动识别并保留文件夹结构；空文件夹不会上传。</span>
+              <strong>
+                {readingFiles && !readingDemoFiles
+                  ? "正在读取文件夹，请稍候…"
+                  : "拖入文件或整个文件夹"}
+              </strong>
+              <span>自动识别并保留文件夹结构；空文件夹不会上传。</span>
             </div>
             <button
               type="button"
+              disabled={readingFiles || busy}
               onClick={() => projectFileInput.current?.click()}
             >
               添加文件
@@ -520,6 +608,23 @@ export function ProjectForm({
               }}
             />
           </div>
+          {((readingFiles && !readingDemoFiles) || fileNotice) && (
+            <p role="status" className="hint">
+              {readingFiles && !readingDemoFiles
+                ? "正在读取文件和目录，完成后会显示在下方。"
+                : fileNotice}
+            </p>
+          )}
+          {fileError && (
+            <p role="alert" className="error">
+              {fileError}
+            </p>
+          )}
+          {projectFiles.length > 0 && (
+            <p className="hint">
+              待上传：{projectFiles.length} 个文件。可展开文件夹查看和移除内容。
+            </p>
+          )}
           <PendingFileTree
             files={projectFiles}
             onRemove={(file) => removeProjectFiles([file])}
@@ -581,26 +686,128 @@ export function ProjectForm({
           <input
             type="checkbox"
             checked={demoEnabled}
+            disabled={readingFiles || busy}
             onChange={(event) => {
-              setDemoEnabled(event.target.checked);
+              const enabled = event.target.checked;
+              if (
+                !enabled &&
+                demoFiles.length > 0 &&
+                !window.confirm("关闭将移除已选择的演示材料，是否继续？")
+              )
+                return;
+              if (!enabled) {
+                setDemoFiles([]);
+                setDemoNotice("");
+                setDemoError("");
+              }
+              setDemoEnabled(enabled);
               setDirty(true);
             }}
           />
           <span>
             为此项目启用演示材料模块
-            <small>本次保存模块开关，文件上传功能将在后续开放。</small>
+            <small>启用后可添加图片、视频和演示文档。</small>
           </span>
         </label>
+        {demoEnabled && (
+          <fieldset>
+            <legend>演示材料</legend>
+            <p className="hint">
+              材料会先暂存在当前页面。发布项目后，点击“保存修改”开始上传；每个文件最大
+              5 GB。
+            </p>
+            <div
+              className={`file-drop-zone${draggingDemoFiles ? " is-dragging" : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDraggingDemoFiles(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "copy";
+                setDraggingDemoFiles(true);
+              }}
+              onDragLeave={(event) => {
+                const next = event.relatedTarget;
+                if (
+                  !(next instanceof Node) ||
+                  !event.currentTarget.contains(next)
+                )
+                  setDraggingDemoFiles(false);
+              }}
+              onDrop={(event) => void dropDemoFiles(event)}
+            >
+              <div className="file-drop-copy">
+                <strong>
+                  {readingDemoFiles
+                    ? "正在读取演示材料，请稍候…"
+                    : "拖入演示文件或文件夹"}
+                </strong>
+                <span>
+                  支持图片、视频、PDF 和其他演示文档，保留文件夹结构。
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={readingFiles || busy}
+                onClick={() => demoFileInput.current?.click()}
+              >
+                添加演示材料
+              </button>
+              <input
+                ref={demoFileInput}
+                type="file"
+                hidden
+                multiple
+                aria-label="选择待上传演示材料"
+                onChange={(event) => {
+                  addDemoFiles(filesFromList(event.target.files));
+                  event.target.value = "";
+                }}
+              />
+            </div>
+            {(readingDemoFiles || demoNotice) && (
+              <p role="status" className="hint">
+                {readingDemoFiles
+                  ? "正在读取演示材料，完成后会显示在下方。"
+                  : demoNotice}
+              </p>
+            )}
+            {demoError && (
+              <p role="alert" className="error">
+                {demoError}
+              </p>
+            )}
+            {demoFiles.length > 0 && (
+              <p className="hint">
+                待上传：{demoFiles.length}{" "}
+                个演示材料。可展开文件夹查看和移除内容。
+              </p>
+            )}
+            <PendingFileTree
+              files={demoFiles}
+              onRemove={(file) => removeDemoFiles([file])}
+              onRemoveFolder={removeDemoFiles}
+            />
+          </fieldset>
+        )}
         {error && (
           <p role="alert" className="error">
             {error}
           </p>
         )}
         <div className="form-actions">
-          <button type="button" onClick={leave} disabled={busy || importing}>
+          <button
+            type="button"
+            onClick={leave}
+            disabled={busy || importing || readingFiles}
+          >
             取消
           </button>
-          <button className="primary" disabled={busy || importing}>
+          <button
+            className="primary"
+            disabled={busy || importing || readingFiles}
+          >
             {busy ? "正在发布…" : "发布项目"}
           </button>
         </div>

@@ -53,6 +53,46 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 					Handler: MeHandler(serverCtx),
 				},
 				{
+					Method:  http.MethodGet,
+					Path:    "/api/v1/chat/conversations",
+					Handler: ListChatConversationsHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/api/v1/chat/conversations/:id/members",
+					Handler: ListChatMembersHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/api/v1/chat/conversations/:id/messages",
+					Handler: ListChatMessagesHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/api/v1/chat/conversations/:id/messages",
+					Handler: SendChatMessageHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/api/v1/chat/conversations/:id/read",
+					Handler: ReadChatConversationHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/api/v1/chat/direct",
+					Handler: CreateChatDirectHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/api/v1/chat/messages/:id/recall",
+					Handler: RecallChatMessageHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/api/v1/chat/uploads/:id/complete",
+					Handler: CompleteChatUploadHandler(serverCtx),
+				},
+				{
 					Method:  http.MethodPost,
 					Path:    "/api/v1/comments/:id/replies",
 					Handler: CreateReplyHandler(serverCtx),
@@ -155,6 +195,21 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		rest.WithMiddlewares(
 			[]rest.Middleware{serverCtx.Session},
 			[]rest.Route{
+				{
+					Method:  http.MethodGet,
+					Path:    "/api/v1/chat/conversations/:id/download-folder",
+					Handler: DownloadChatFolderHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/api/v1/chat/files/:id/download",
+					Handler: DownloadChatFileHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/api/v1/chat/files/:id/preview",
+					Handler: PreviewChatFileHandler(serverCtx),
+				},
 				{
 					Method:  http.MethodGet,
 					Path:    "/api/v1/files/:id/download",

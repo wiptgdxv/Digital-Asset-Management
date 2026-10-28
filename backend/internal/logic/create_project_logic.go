@@ -52,5 +52,8 @@ func (l *CreateProjectLogic) CreateProject(req *types.ProjectRequest) (resp *typ
 		return nil, e
 	}
 	p, e := l.svcCtx.Store.Project(l.ctx, id)
+	if e == nil {
+		l.svcCtx.ChatHub.Notify()
+	}
 	return &p, e
 }

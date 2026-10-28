@@ -87,6 +87,8 @@ curl --fail --show-error http://192.168.1.100:9009/api/v1/health
 
 ## 7. 备份
 
+聊天功能需要运行新增数据库迁移；升级应保留数据库卷和上传文件卷。现有项目会在迁移中自动建立项目群。Nginx 已配置聊天 WebSocket 和聊天上传的流式代理；部署后请验证连接、文件续传、成员权限与消息保留策略。当前实时推送按单个后端实例设计，不应直接横向扩展为多个后端实例。
+
 ```bash
 bash deploy/backup.sh /opt/digital-assets/backups
 ```

@@ -104,6 +104,44 @@ Comment 包含 id、projectId、userId、user、content、createdAt、updatedAt�
 
 历史记录按版本从新到旧排列，包含版本号、编辑者、操作类型、变化字段和时间。项目创建和内容编辑会写入不可变快照；迁移前已有项目会生成 baseline 记录。历史仅供查看，不提供版本恢复接口。旧数据库中已经存在的恢复记录仍会按原操作类型返回。文件上传和评论不进入内容编辑历史。
 
+## 内部聊天
+
+所有接口需要登录会话；写入请求需要 `X-CSRF-Token`。全员群对所有有效员工可用；私聊仅双方可访问；项目群仅作者、当前共创者和超级管理员可访问。超级管理员不能访问其他人的私聊。项目群成员重新加入后只能读取本次加入后的消息和文件。项目删除时会级联删除项目群及消息，文件正文进入清理队列。
+
+| 方法与路径 | 用途 |
+| --- | --- |
+| GET /api/v1/chat/conversations | 可访问会话列表、未读数及未读提及数 |
+| POST /api/v1/chat/direct | 以 `userId` 创建或打开一对一会话 |
+| GET /api/v1/chat/conversations/:id/messages | 消息列表；支持 `before`、`q` 和 `files=true`，每次最多 100 条 |
+| GET /api/v1/chat/conversations/:id/members | 会话成员搜索，支持 `q` |
+| POST /api/v1/chat/conversations/:id/messages | 发送 `content`，可选 `replyTo`；正文最多 2000 字 |
+| POST /api/v1/chat/conversations/:id/read | `lastMessageId` 标记已读至客户端实际收到的消息 |
+| POST /api/v1/chat/messages/:id/recall | 本人随时撤回，正文和附件不可再查看 |
+| GET /api/v1/chat/events | 同源 WebSocket；只推送不含正文的变更信号 |
+| POST/HEAD/PATCH /api/v1/chat/uploads | tus 创建、查询和续传；上传者与会话权限均须通过校验 |
+| POST /api/v1/chat/uploads/:id/complete | 完成上传并创建附件消息，重复完成保持幂等 |
+| GET /api/v1/chat/files/:id/download | 下载附件，支持 Range |
+| GET /api/v1/chat/files/:id/preview | 预览白名单类型，支持 Range |
+| GET /api/v1/chat/conversations/:id/download-folder | 按 `batch` 和 `folder` 流式打包同批次文件夹 |
+
+tus 元数据包括 `conversationId`、`filename`、可选 `relativePath`、`batchId` 和 `batchTotal`，每批最多 10000 个文件。批次未接收完整时，界面注明已接收数量，下载仅包含已接收的文件。文件上限为 5,000,000,000 字节。下载和预览每次都检查当前会话权限、成员加入时间、撤回状态及保留期限。消息和文件保留一个自然月；后台定期删除过期消息并将文件正文加入持久化清理队列，未完成上传在七天后清理。备份文件本身的保留期限由备份策略另行管理。
+
+`@用户名` 只提醒该会话的有效成员，自己和非成员不会收到提及提醒。消息和附件会在提交成功后发送不含私人内容的 WebSocket 更新信号。WebSocket 需要与配置的 `ALLOWED_ORIGIN` 完全一致，并在断线后重新连接。
+
+发送示例（`replyTo` 为 0 或省略表示普通消息）：
+
+```json
+{"content":"请 @xiaoli 查看资料","replyTo":0}
+```
+
+已读示例：
+
+```json
+{"lastMessageId":123}
+```
+
+无效消息或上传参数返回 400；未登录返回 401；会话或文件不存在、无权访问或引用不可见消息返回 404；上传未完成返回 409；超出大小上限返回 413；存储异常返回 5xx。tus 传输错误遵循 tus 响应格式，普通接口使用 `message` 错误正文。
+
 ## 管理员与项目删除
 
 `User` 包含 `isAdmin`。`PUT /api/v1/users/:id/admin` 仅管理员可调用；系统拒绝撤销最后一名管理员或超级管理员的权限并返回 409。由 `BOOTSTRAP_ADMIN_USERNAME` 指定且仍具管理员权限的账号是唯一超级管理员；`AuthResponse.isSuperAdmin` 用于前端展示专属操作。

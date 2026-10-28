@@ -30,8 +30,13 @@ func main() {
 	var c config.Config
 	conf.MustLoad(*configFile, &c, conf.UseEnv())
 	httpx.SetErrorHandlerCtx(apperror.Handler)
+	// go-zero's request logger may dump request bodies and session headers on
+	// errors or in verbose mode. Chat and credentials must never enter logs.
+	c.Middlewares.Log = false
+	c.Verbose = false
 
 	server := rest.MustNewServer(c.RestConf)
+	server.Use(middleware.SafeRequestLog)
 	server.Use(middleware.Origin(c.AllowedOrigin))
 	defer server.Stop()
 
@@ -43,6 +48,14 @@ func main() {
 		{Method: http.MethodPost, Path: "/api/v1/uploads", Handler: ctx.Files.Transport},
 		{Method: http.MethodHead, Path: "/api/v1/uploads/:id", Handler: ctx.Files.Transport},
 		{Method: http.MethodPatch, Path: "/api/v1/uploads/:id", Handler: ctx.Files.Transport},
+	}...), rest.WithMaxBytes(16*1024*1024), rest.WithTimeout(0))
+	server.AddRoutes(rest.WithMiddlewares([]rest.Middleware{ctx.Session}, []rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/chat/events", Handler: ctx.ChatHub.ServeHTTP},
+	}...), rest.WithTimeout(0))
+	server.AddRoutes(rest.WithMiddlewares([]rest.Middleware{ctx.Session}, []rest.Route{
+		{Method: http.MethodPost, Path: "/api/v1/chat/uploads", Handler: ctx.ChatFiles.Transport},
+		{Method: http.MethodHead, Path: "/api/v1/chat/uploads/:id", Handler: ctx.ChatFiles.Transport},
+		{Method: http.MethodPatch, Path: "/api/v1/chat/uploads/:id", Handler: ctx.ChatFiles.Transport},
 	}...), rest.WithMaxBytes(16*1024*1024), rest.WithTimeout(0))
 	cleanupCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -57,6 +70,23 @@ func main() {
 				if err := ctx.Files.Cleanup(cleanupCtx); err != nil {
 					logx.Error("file cleanup deferred; will retry")
 				}
+			}
+		}
+	}()
+	go func() {
+		// Retry failures on the next tick; cleanup is also run once at startup.
+		for {
+			if err := ctx.Store.PurgeExpiredChatMessages(cleanupCtx); err != nil {
+				logx.Error("expired chat cleanup deferred; will retry")
+			}
+			timer := time.NewTimer(15 * time.Minute)
+			select {
+			case <-cleanupCtx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return
+			case <-timer.C:
 			}
 		}
 	}()

@@ -3,6 +3,7 @@ module digital-assets/backend
 go 1.27.2
 
 require (
+	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/tus/tusd/v2 v2.8.0
 	github.com/zeromicro/go-zero v1.10.3

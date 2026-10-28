@@ -46,5 +46,6 @@ func (l *DeleteProjectLogic) DeleteProject(req *types.ProjectIDRequest) (resp *t
 	if err != nil {
 		return nil, err
 	}
+	l.svcCtx.ChatHub.Notify()
 	return &types.MessageResponse{Message: "项目已删除，附件正在安全清理"}, nil
 }

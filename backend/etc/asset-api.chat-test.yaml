@@ -1,0 +1,9 @@
+Name: asset-api-chat-test
+Host: 127.0.0.1
+Port: ${CHAT_TEST_PORT}
+Mode: test
+Timeout: 5000
+DatabaseURL: "${DATABASE_URL}"
+UploadDir: "${UPLOAD_DIR}"
+AllowedOrigin: "${ALLOWED_ORIGIN}"
+BootstrapAdminUsername: "${BOOTSTRAP_ADMIN_USERNAME}"

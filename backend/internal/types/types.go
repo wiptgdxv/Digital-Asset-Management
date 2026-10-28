@@ -15,6 +15,78 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"newPassword"`
 }
 
+type ChatConversation struct {
+	Id        int64  `json:"id"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	ProjectId int64  `json:"projectId"`
+	Unread    int64  `json:"unread"`
+	Mentions  int64  `json:"mentions"`
+}
+
+type ChatConversationsResponse struct {
+	Items []ChatConversation `json:"items"`
+}
+
+type ChatDirectRequest struct {
+	UserId int64 `json:"userId"`
+}
+
+type ChatFolderRequest struct {
+	Id     int64  `path:"id"`
+	Batch  string `form:"batch"`
+	Folder string `form:"folder"`
+}
+
+type ChatIdRequest struct {
+	Id int64 `path:"id"`
+}
+
+type ChatMembersRequest struct {
+	Id    int64  `path:"id"`
+	Query string `form:"q,optional"`
+}
+
+type ChatMessage struct {
+	Id             int64  `json:"id"`
+	ConversationId int64  `json:"conversationId"`
+	Author         User   `json:"author"`
+	Content        string `json:"content"`
+	CreatedAt      string `json:"createdAt"`
+	Recalled       bool   `json:"recalled"`
+	AttachmentId   string `json:"attachmentId"`
+	Filename       string `json:"filename"`
+	RelativePath   string `json:"relativePath"`
+	Size           int64  `json:"size"`
+	Previewable    bool   `json:"previewable"`
+	BatchId        string `json:"batchId"`
+	BatchTotal     int64  `json:"batchTotal"`
+	BatchCompleted int64  `json:"batchCompleted"`
+	ReplyTo        int64  `json:"replyTo"`
+}
+
+type ChatMessagesRequest struct {
+	Id        int64  `path:"id"`
+	Before    int64  `form:"before,optional"`
+	Query     string `form:"q,optional"`
+	FilesOnly bool   `form:"files,optional"`
+}
+
+type ChatMessagesResponse struct {
+	Items []ChatMessage `json:"items"`
+}
+
+type ChatReadRequest struct {
+	Id            int64 `path:"id"`
+	LastMessageId int64 `json:"lastMessageId"`
+}
+
+type ChatSendRequest struct {
+	Id      int64  `path:"id"`
+	Content string `json:"content"`
+	ReplyTo int64  `json:"replyTo,optional"`
+}
+
 type Comment struct {
 	Id        int64   `json:"id"`
 	ProjectId int64   `json:"projectId"`

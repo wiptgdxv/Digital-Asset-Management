@@ -278,6 +278,85 @@ test("演示材料与项目文件隔离，并仅预览安全格式", async ({ pa
       path: "test-results/demo-showcase.png",
       fullPage: true,
     });
+
+    await page.getByRole("button", { name: "返回项目列表" }).click();
+    await page
+      .getByRole("button", { name: "创建项目", exact: true })
+      .first()
+      .click();
+    const createdName = "创建时添加演示 " + key;
+    await page.getByLabel("项目名称", { exact: true }).fill(createdName);
+    await page
+      .getByRole("checkbox", { name: /为此项目启用演示材料模块/ })
+      .check();
+    await page.getByLabel("选择待上传演示材料").setInputFiles({
+      name: "创建演示.png",
+      mimeType: "image/png",
+      buffer: png,
+    });
+    await expect(
+      page.getByText("已添加 1 个演示材料到待上传列表。"),
+    ).toBeVisible();
+    await page.getByLabel("选择待上传项目文件").setInputFiles({
+      name: "创建项目.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("项目文件"),
+    });
+    page.once("dialog", (dialog) => dialog.dismiss());
+    await page
+      .getByRole("checkbox", { name: /为此项目启用演示材料模块/ })
+      .click();
+    await expect(
+      page.getByRole("checkbox", { name: /为此项目启用演示材料模块/ }),
+    ).toBeChecked();
+    await page.getByRole("button", { name: "发布项目" }).click();
+    await expect(page.getByRole("heading", { name: "编辑项目" })).toBeVisible();
+    await expect(
+      page.getByText("项目已创建，所选文件尚未上传", { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".file-tree-file").filter({ hasText: "创建演示.png" }),
+    ).toContainText("待保存");
+    await expect(
+      page.locator(".file-tree-file").filter({ hasText: "创建项目.txt" }),
+    ).toContainText("待保存");
+    const listed = await (
+      await page.request.get(
+        `/api/v1/projects?scope=all&q=${encodeURIComponent(createdName)}&page=1`,
+      )
+    ).json();
+    const createdProject = listed.items.find(
+      (item: { name: string }) => item.name === createdName,
+    );
+    expect(createdProject).toBeTruthy();
+    expect(
+      (
+        await (
+          await page.request.get(
+            `/api/v1/projects/${createdProject.id}/demo-files`,
+          )
+        ).json()
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (
+        await (
+          await page.request.get(`/api/v1/projects/${createdProject.id}/files`)
+        ).json()
+      ).items,
+    ).toHaveLength(0);
+    await page.getByRole("button", { name: "保存修改" }).click();
+    await expect(
+      page.getByRole("heading", { name: createdName, exact: true }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "创建演示.png" })).toBeVisible();
+    expect(
+      (
+        await (
+          await page.request.get(`/api/v1/projects/${createdProject.id}/files`)
+        ).json()
+      ).items,
+    ).toHaveLength(1);
   } finally {
     execFileSync(
       "docker",

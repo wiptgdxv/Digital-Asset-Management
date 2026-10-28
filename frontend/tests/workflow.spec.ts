@@ -76,6 +76,47 @@ test("注册、登录、共创项目、筛选、会话与权限", async ({ page,
       .getByRole("button", { name: "创建项目", exact: true })
       .first()
       .click();
+    const createDropZone = page.locator(".file-drop-zone");
+    await createDropZone.evaluate((target) => {
+      const file = new File(["内容"], "说明.txt", { type: "text/plain" });
+      const fileEntry = {
+        isFile: true,
+        isDirectory: false,
+        fullPath: "/项目资料/说明.txt",
+        file: (resolve: (file: File) => void) =>
+          window.setTimeout(() => resolve(file), 500),
+      };
+      const directoryEntry = {
+        isFile: false,
+        isDirectory: true,
+        fullPath: "/项目资料",
+        createReader: () => {
+          let read = false;
+          return {
+            readEntries: (resolve: (entries: unknown[]) => void) => {
+              resolve(read ? [] : [fileEntry]);
+              read = true;
+            },
+          };
+        },
+      };
+      const drop = new Event("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(drop, "dataTransfer", {
+        value: {
+          items: [{ webkitGetAsEntry: () => directoryEntry }],
+          files: [],
+        },
+      });
+      target.dispatchEvent(drop);
+    });
+    await expect(createDropZone).toContainText("正在读取文件夹");
+    await expect(page.getByRole("button", { name: "发布项目" })).toBeDisabled();
+    await expect(page.getByText("已添加 1 个文件到待上传列表。")).toBeVisible();
+    await expect(
+      page.getByText("待上传：1 个文件", { exact: false }),
+    ).toBeVisible();
+    await expect(page.locator(".file-tree")).toContainText("项目资料");
+    await page.getByRole("button", { name: "移除文件夹" }).click();
     await page.getByLabel("项目名称", { exact: true }).fill(projectName);
     await page.getByLabel("项目分类", { exact: true }).selectOption("文档");
     await page.getByLabel("项目简介").fill("跨成员协作与项目查询验收");

@@ -61,6 +61,7 @@ export function ProjectEdit({
   onCancel,
   onExpired,
   initialFiles = [],
+  initialDemoFiles = [],
   onProjectChanged,
 }: {
   initialProject: Project;
@@ -69,6 +70,7 @@ export function ProjectEdit({
   onCancel: () => void;
   onExpired: () => void;
   initialFiles?: SelectedFile[];
+  initialDemoFiles?: SelectedFile[];
   onProjectChanged?: (project: Project) => void;
 }) {
   const draftKey = `assets:project-edit-draft:${session.user.id}:${initialProject.id}`;
@@ -84,7 +86,9 @@ export function ProjectEdit({
   const [projectFilesPending, setProjectFilesPending] = useState(
     initialFiles.length > 0,
   );
-  const [demoFilesPending, setDemoFilesPending] = useState(false);
+  const [demoFilesPending, setDemoFilesPending] = useState(
+    initialDemoFiles.length > 0,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [lookupError, setLookupError] = useState("");
@@ -95,7 +99,7 @@ export function ProjectEdit({
       readProjectDraft<EditDraftValue>(draftKey),
     );
   const [section, setSection] = useState<EditSection>(
-    initialFiles.length ? "files" : "details",
+    initialFiles.length || initialDemoFiles.length ? "files" : "details",
   );
   const fileInput = useRef<HTMLInputElement>(null);
   const projectFiles = useRef<FilesPanelHandle>(null);
@@ -387,6 +391,12 @@ export function ProjectEdit({
           </button>
         </div>
       </div>
+      {((initialFiles.length > 0 && projectFilesPending) ||
+        (initialDemoFiles.length > 0 && demoFilesPending)) && (
+        <p role="status" className="hint edit-wide-notice">
+          项目已创建，所选文件尚未上传。请点击上方“保存修改”开始上传，完成前请勿关闭页面。
+        </p>
+      )}
       {conflict && (
         <div className="conflict-notice edit-wide-notice" role="alert">
           <div>
@@ -618,6 +628,7 @@ export function ProjectEdit({
             projectId={project.id}
             session={session}
             kind="demo"
+            initialFiles={initialDemoFiles}
             editable
             deferInitialLoad={!project.demoEnabled}
             onPendingChange={setDemoFilesPending}

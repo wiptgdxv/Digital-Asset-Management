@@ -51,18 +51,16 @@ export function Auth({ onLogin }: { onLogin: (session: Session) => void }) {
             <span>数字资产管理中心</span>
           </div>
         </div>
-        <div className="auth-intro">
-          <h1>
-            让每一份成果，
-            <br />
-            都能被团队找到。
-          </h1>
-          <p>
-            项目说明、交付文件与共创记录，
-            <br />
-            在同一个工作空间中持续积累。
-          </p>
-        </div>
+        <h1>
+          让每一份成果，
+          <br />
+          都能被团队找到。
+        </h1>
+        <p>
+          项目说明、交付文件与共创记录，
+          <br />
+          在同一个工作空间中持续积累。
+        </p>
         <small>公司内网 · 团队共享</small>
       </div>
       <main className="auth-main">

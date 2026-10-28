@@ -195,6 +195,78 @@ type NotificationsResponse {
 	Unread int64          `json:"unread"`
 }
 
+type ChatConversation {
+	Id        int64  `json:"id"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	ProjectId int64  `json:"projectId"`
+	Unread    int64  `json:"unread"`
+	Mentions  int64  `json:"mentions"`
+}
+
+type ChatConversationsResponse {
+	Items []ChatConversation `json:"items"`
+}
+
+type ChatDirectRequest {
+	UserId int64 `json:"userId"`
+}
+
+type ChatIdRequest {
+	Id int64 `path:"id"`
+}
+
+type ChatReadRequest {
+	Id            int64 `path:"id"`
+	LastMessageId int64 `json:"lastMessageId"`
+}
+
+type ChatMessagesRequest {
+	Id        int64  `path:"id"`
+	Before    int64  `form:"before,optional"`
+	Query     string `form:"q,optional"`
+	FilesOnly bool   `form:"files,optional"`
+}
+
+type ChatMembersRequest {
+	Id    int64  `path:"id"`
+	Query string `form:"q,optional"`
+}
+
+type ChatSendRequest {
+	Id      int64  `path:"id"`
+	Content string `json:"content"`
+	ReplyTo int64  `json:"replyTo,optional"`
+}
+
+type ChatFolderRequest {
+	Id     int64  `path:"id"`
+	Batch  string `form:"batch"`
+	Folder string `form:"folder"`
+}
+
+type ChatMessage {
+	Id             int64  `json:"id"`
+	ConversationId int64  `json:"conversationId"`
+	Author         User   `json:"author"`
+	Content        string `json:"content"`
+	CreatedAt      string `json:"createdAt"`
+	Recalled       bool   `json:"recalled"`
+	AttachmentId   string `json:"attachmentId"`
+	Filename       string `json:"filename"`
+	RelativePath   string `json:"relativePath"`
+	Size           int64  `json:"size"`
+	Previewable    bool   `json:"previewable"`
+	BatchId        string `json:"batchId"`
+	BatchTotal     int64  `json:"batchTotal"`
+	BatchCompleted int64  `json:"batchCompleted"`
+	ReplyTo        int64  `json:"replyTo"`
+}
+
+type ChatMessagesResponse {
+	Items []ChatMessage `json:"items"`
+}
+
 type ListProjectHistoryRequest {
 	Id   int64 `path:"id"`
 	Page int64 `form:"page,default=1"`
@@ -232,6 +304,30 @@ service asset-api {
 service asset-api {
 	@handler Me
 	get /api/v1/auth/me returns (AuthResponse)
+
+	@handler ListChatConversations
+	get /api/v1/chat/conversations returns (ChatConversationsResponse)
+
+	@handler CreateChatDirect
+	post /api/v1/chat/direct (ChatDirectRequest) returns (ChatConversation)
+
+	@handler ListChatMessages
+	get /api/v1/chat/conversations/:id/messages (ChatMessagesRequest) returns (ChatMessagesResponse)
+
+	@handler ListChatMembers
+	get /api/v1/chat/conversations/:id/members (ChatMembersRequest) returns (UsersResponse)
+
+	@handler SendChatMessage
+	post /api/v1/chat/conversations/:id/messages (ChatSendRequest) returns (ChatMessage)
+
+	@handler ReadChatConversation
+	post /api/v1/chat/conversations/:id/read (ChatReadRequest) returns (MessageResponse)
+
+	@handler RecallChatMessage
+	post /api/v1/chat/messages/:id/recall (ChatIdRequest) returns (MessageResponse)
+
+	@handler CompleteChatUpload
+	post /api/v1/chat/uploads/:id/complete (UploadIDRequest) returns (ChatMessage)
 
 	@handler ChangePassword
 	post /api/v1/auth/change-password (ChangePasswordRequest) returns (MessageResponse)
@@ -302,6 +398,15 @@ service asset-api {
 	timeout:    0s
 )
 service asset-api {
+	@handler DownloadChatFolder
+	get /api/v1/chat/conversations/:id/download-folder (ChatFolderRequest)
+
+	@handler DownloadChatFile
+	get /api/v1/chat/files/:id/download (UploadIDRequest)
+
+	@handler PreviewChatFile
+	get /api/v1/chat/files/:id/preview (UploadIDRequest)
+
 	@handler DownloadProjectFiles
 	get /api/v1/projects/:id/files/download-all (ProjectIDRequest)
 

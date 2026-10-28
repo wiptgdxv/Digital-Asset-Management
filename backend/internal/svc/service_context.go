@@ -6,6 +6,7 @@ package svc
 import (
 	"context"
 	"database/sql"
+	"digital-assets/backend/internal/chat"
 	"digital-assets/backend/internal/config"
 	"digital-assets/backend/internal/files"
 	"digital-assets/backend/internal/middleware"
@@ -15,11 +16,13 @@ import (
 )
 
 type ServiceContext struct {
-	Config  config.Config
-	DB      *sql.DB
-	Store   *model.Store
-	Session rest.Middleware
-	Files   *files.Manager
+	Config    config.Config
+	DB        *sql.DB
+	Store     *model.Store
+	Session   rest.Middleware
+	Files     *files.Manager
+	ChatFiles *files.ChatManager
+	ChatHub   *chat.Hub
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -37,11 +40,17 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	if err != nil {
 		panic("cannot initialize file storage")
 	}
+	chatFileManager, err := files.NewChat(fileManager, c.AllowedOrigin, c.BootstrapAdminUsername)
+	if err != nil {
+		panic("cannot initialize chat file storage")
+	}
 	return &ServiceContext{
-		Config:  c,
-		DB:      db,
-		Store:   store,
-		Files:   fileManager,
-		Session: middleware.NewSessionMiddleware(store).Handle,
+		Config:    c,
+		DB:        db,
+		Store:     store,
+		Files:     fileManager,
+		ChatFiles: chatFileManager,
+		ChatHub:   chat.New(store, c.AllowedOrigin),
+		Session:   middleware.NewSessionMiddleware(store).Handle,
 	}
 }

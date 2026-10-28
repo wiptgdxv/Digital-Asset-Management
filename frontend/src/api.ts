@@ -58,6 +58,31 @@ export type NotificationsResponse = {
   items: Notification[];
   unread: number;
 };
+export type ChatConversation = {
+  id: number;
+  kind: "global" | "project" | "direct";
+  name: string;
+  projectId: number;
+  unread: number;
+  mentions: number;
+};
+export type ChatMessage = {
+  id: number;
+  conversationId: number;
+  author: User;
+  content: string;
+  createdAt: string;
+  recalled: boolean;
+  attachmentId: string;
+  filename: string;
+  relativePath: string;
+  size: number;
+  previewable: boolean;
+  batchId: string;
+  batchTotal: number;
+  batchCompleted: number;
+  replyTo: number;
+};
 export type ProjectHistoryItem = {
   id: number;
   version: number;

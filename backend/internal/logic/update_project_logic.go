@@ -48,6 +48,7 @@ func (l *UpdateProjectLogic) UpdateProject(req *types.UpdateProjectRequest) (res
 	user := auth.Current(l.ctx).User
 	p, e := l.svcCtx.Store.UpdateProject(l.ctx, req, user.Id, user.IsAdmin)
 	if e == nil {
+		l.svcCtx.ChatHub.Notify()
 		return &p, nil
 	}
 	if errors.Is(e, sql.ErrNoRows) {
